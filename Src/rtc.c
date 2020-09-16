@@ -37,8 +37,8 @@ void MX_RTC_Init(void)
   */
   hrtc.Instance = RTC;
   hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
-  hrtc.Init.AsynchPrediv = CFG_RTC_ASYNCH_PRESCALER;
-  hrtc.Init.SynchPrediv = CFG_RTC_SYNCH_PRESCALER;
+  hrtc.Init.AsynchPrediv = 127;
+  hrtc.Init.SynchPrediv = 255;
   hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
   hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
   hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
@@ -72,11 +72,11 @@ void MX_RTC_Init(void)
   {
     Error_Handler();
   }
-#if 0
+#if 0 /* Bring to main for more precise */
   /** Enable the Alarm A
   */
   sAlarm.AlarmTime.Hours = 0;
-  sAlarm.AlarmTime.Minutes = 5;
+  sAlarm.AlarmTime.Minutes = 2;
   sAlarm.AlarmTime.Seconds = 0;
   sAlarm.AlarmTime.SubSeconds = 0;
   sAlarm.AlarmTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
@@ -91,6 +91,7 @@ void MX_RTC_Init(void)
     Error_Handler();
   }
 #endif
+
 }
 
 void HAL_RTC_MspInit(RTC_HandleTypeDef* rtcHandle)

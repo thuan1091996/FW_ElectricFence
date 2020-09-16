@@ -102,6 +102,8 @@ typedef struct {
 #define LORA_TEST			USED
 #define CHANGE_DEVEUI		USED
 #define TEST_DOWNLINK		NOT_USED
+#define FW1_TEST 			USED
+#define TEST_ITV			1
 ///////////////////////////////////////////////////////////////////////////////
 #if DEBUG_UART
 #ifdef __GNUC__
@@ -138,9 +140,7 @@ PUTCHAR_PROTOTYPE
 /* USER CODE BEGIN PV */
 volatile bool g_acl_interrupt=false;
 volatile bool g_rak4200_newdata=false;
-volatile bool g_rtcwakeup=false;
-RTC_TimeTypeDef curTime = {0};
-RTC_DateTypeDef curDate = {0};
+volatile bool g_rtcwakeup=true;
 RTC_TimeTypeDef eventTime = {0};
 RTC_DateTypeDef eventDate = {0};
 /* USER CODE END PV */
@@ -170,6 +170,9 @@ eTestStatus BLE_FWTest(void);
 void ButtonsHandler(void);
 void EnterStopMode(void);
 
+static bool DISTANCE_GetData(float *distance_fl);
+void ConvertData(uint8_t* p_ui8buffer, uint16_t ui16data);
+void Alarm_Init(void);
 #endif /*End of FW_TEST*/
 /* USER CODE END PFP */
 
@@ -214,8 +217,8 @@ int main(void)
   MX_LPUART1_UART_Init();
   MX_TIM16_Init();
   /* USER CODE BEGIN 2 */
-  Sys_Test();
-//  FW_Test1();
+//  Sys_Test();
+  FW_Test1();
 
   printf("Testing BLE function (including button test)\n");
   /* USER CODE END 2 */
@@ -339,47 +342,34 @@ eTestStatus Sys_Test(void)
 	else printf("No ACL interrupt detected \n");
 	return SYS_test;
 }
-
+uint8_t distance_str[10]={0};
 eTestStatus FW_Test1(void)
 {
 	eTestStatus fw1_teststatus = RET_FAIL;
-
+	float distance_data=0.0;
+	uint16_t ui16distance=0;
 	printf("FW1 Test started... \n");
 	printf("Testing LoRa ...\n");
-	if(LORA_FWTest() == RET_OK)	 	printf("FW Test LoRa: OK \n"); /* Sending uplink after 30s */
-	else							printf("FW Test LoRa: Not OK \n");
-	//Init alarm
-	RTC_AlarmTypeDef sAlarm = {0};
-	sAlarm.AlarmTime.Hours = 0;
-	sAlarm.AlarmTime.Minutes = 0;
-	sAlarm.AlarmTime.Seconds = 10;
-	sAlarm.AlarmTime.SubSeconds = 0;
-	sAlarm.AlarmTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
-	sAlarm.AlarmTime.StoreOperation = RTC_STOREOPERATION_RESET;
-	sAlarm.AlarmMask = RTC_ALARMMASK_DATEWEEKDAY| RTC_ALARMMASK_HOURS| RTC_ALARMMASK_MINUTES;
-	sAlarm.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_ALL;
-	sAlarm.AlarmDateWeekDaySel = RTC_ALARMDATEWEEKDAYSEL_DATE;
-	sAlarm.AlarmDateWeekDay = 1;
-	sAlarm.Alarm = RTC_ALARM_A;
-	if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN) != HAL_OK)
-	{
-	  Error_Handler();
-	}
+	LORA_FWTest();
+	Alarm_Init();
 	while(1)
 	{
-		if(g_rtcwakeup == true)
+		if(g_rtcwakeup == true)				/* Make sure wake up by RTC */
 		{
-//			sAlarm.AlarmTime.Seconds += 30;
-//			if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN) != HAL_OK)
-//			{
-//				Error_Handler();
-//			}
-			printf("Alarm occurred\n");
+			if(DISTANCE_GetData(&distance_data) == true)
+			{
+				memset(distance_str, 0, 10);
+				ui16distance = (uint16_t) distance_data;					//casting for quick debug
+				printf("Distance to obstacle: %d \n",ui16distance);
+				ConvertData(distance_str, ui16distance);
+				strcat((char*)distance_str,"\r\n");
+			}
+			LORA_FWTest();					/* Send uplink */
 			g_rtcwakeup = false;
-//			sAlarm.AlarmTime.Minutes+=5;
+			EnterStopMode();
 		}
-//		EnterStopMode();
 	}
+	return fw1_teststatus;
 
 }
 
@@ -770,9 +760,9 @@ eTestStatus DISTANCE_FWTest(void)
 #define MAX_REJOIN				10
 
 #if CHANGE_DEVEUI
-#define INIT_COMMANDS			6
-#else
 #define INIT_COMMANDS			5
+#else
+#define INIT_COMMANDS			4
 #endif
 
 
@@ -789,8 +779,8 @@ const char* LoRaInitCommands[] =
 	#endif
 	RAK4200_SET_APPEUI,
 	RAK4200_SET_APPKEY,
-	RAK4200_SET_DR0,
-	RAK4200_SET_GAP
+	RAK4200_SET_DR0
+	//RAK4200_SET_GAP
 };
 
 typedef enum eLoRaState
@@ -812,17 +802,18 @@ eTestStatus LORA_FWTest(void)
 {
 	uint8_t lora_datarecv=0;
 	uint8_t lora_dataindex=0;
+	uint8_t uplink_data[21]="at+send=lora:1:";
 	LORA_test = RET_FAIL;
 	#if LORA_TEST
-	HAL_GPIO_WritePin(RAK_EN_GPIO_Port, RAK_EN_Pin, GPIO_PIN_SET);
-	HAL_Delay(3000);												//Wait for stable
 	#if DEBUG_AT_UART
 	HAL_GPIO_DeInit(GPIOA, GPIO_PIN_2);
 	HAL_GPIO_DeInit(GPIOA, GPIO_PIN_3);
 	#else /* End of DEBUG_AT_UART  */
-
 	if(g_LoRaInit == false) //Init LoRa & LoRaWan parameter in case not initialized yet
 	{
+//		__HAL_UART_ENABLE_IT(&huart1,UART_IT_IDLE); 		/* Enable UART IDLE interrupt */
+		HAL_GPIO_WritePin(RAK_EN_GPIO_Port, RAK_EN_Pin, GPIO_PIN_SET);
+		HAL_Delay(3000);									/* Wait for stable */
 		for(int command_count = 0; command_count < INIT_COMMANDS; ++command_count) //Send devices initial commands
 		{
 			//Clear buffer before receive new response
@@ -845,76 +836,102 @@ eTestStatus LORA_FWTest(void)
 			HAL_UART_Transmit(&huart1, g_lora_datarecv, strlen((const char*) g_lora_datarecv), 100);
 		}
 		LoRa_curState = DEVICE_STATE_STARTED;
-		g_LoRaInit = true;
-	}
-	//Testing Joining
-	printf("Joining ... \n");
-	for (int retry_count = 0; retry_count < MAX_REJOIN; ++retry_count)
-	{
-		memset(g_lora_datarecv, 0, RAK_DATALEN);
-		lora_dataindex = 0;
-		if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_JOIN, strlen(RAK4200_JOIN), 100) == HAL_OK)
-		{
-			do
-			{
-				if( (HAL_UART_Receive_IT(&hlpuart1, &lora_datarecv, 1) == HAL_OK) && (lora_datarecv !=0) )
-				{
-					g_lora_datarecv[lora_dataindex++] = lora_datarecv;
-				}
-			}while( (strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) == NULL));
-			if( (strstr( (const char*)g_lora_datarecv, (const char*)"Join Success") != NULL) )
-			{
-				LoRa_curState = DEVICE_STATE_JOINED;
-				printf("Joined successfully\n");
-				HAL_Delay(100);
-				break;
-			}
-		}
-	}
-
-	// Testing transfer data (up/downlink messages)
-	if(LoRa_curState == DEVICE_STATE_JOINED)
-	{
+		//Testing Joining
+		printf("Joining ... \n");
 		for (int retry_count = 0; retry_count < MAX_REJOIN; ++retry_count)
 		{
 			memset(g_lora_datarecv, 0, RAK_DATALEN);
 			lora_dataindex = 0;
-			if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_SENDTEST, strlen(RAK4200_SENDTEST), 100) == HAL_OK)
+			if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_JOIN, strlen(RAK4200_JOIN), 100) == HAL_OK)
 			{
 				do
 				{
-					if( (HAL_UART_Receive_IT(&hlpuart1, &lora_datarecv, 1) == HAL_OK))
+					if( (HAL_UART_Receive_IT(&hlpuart1, &lora_datarecv, 1) == HAL_OK) && (lora_datarecv !=0) )
 					{
-							g_lora_datarecv[lora_dataindex++] = lora_datarecv;
+						g_lora_datarecv[lora_dataindex++] = lora_datarecv;
 					}
 				}while( (strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) == NULL));
-				if( (strstr( (const char*)g_lora_datarecv, (const char*)"at+send")) != NULL)
-				#if !TEST_DOWNLINK //Since this will cause losing downlink data
+				if( (strstr( (const char*)g_lora_datarecv, (const char*)"Join Success") != NULL) )
 				{
-					printf("Send uplink completed\n");
-					LORA_test = RET_OK;
+					LoRa_curState = DEVICE_STATE_JOINED;
+					printf("Joined successfully\n");
+					HAL_Delay(100);
 					break;
 				}
-				#else	//Test downlink
+			}
+		}
+		g_LoRaInit = true;
+	}
+	else
+	{
+		// Testing transfer data (up/downlink messages)
+		if(LoRa_curState == DEVICE_STATE_JOINED)
+		{
+			for (int retry_count = 0; retry_count < MAX_REJOIN; ++retry_count)
+			{
+				memset(g_lora_datarecv, 0, RAK_DATALEN); //TODO
+				lora_dataindex = 0;
+				#if FW1_TEST
+				strcat((char*)uplink_data, (char*)distance_str);
+				if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) uplink_data, strlen(uplink_data), 200) == HAL_OK)
+				#else
+				if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_SENDTEST, strlen(RAK4200_SENDTEST), 100) == HAL_OK)
+				#endif /*FW1_TEST*/
 				{
 					do
 					{
-						if(HAL_UART_Receive_IT(&hlpuart1, &lora_datarecv, 1) == HAL_OK)
+						if( (HAL_UART_Receive_IT(&hlpuart1, &lora_datarecv, 1) == HAL_OK))
 						{
 							g_lora_datarecv[lora_dataindex++] = lora_datarecv;
 						}
-					}
-
-					while ( (strstr( (const char*)g_lora_datarecv, (const char*)"at+recv") == NULL));
-					printf("Send uplink completed\n");
-					if((strstr( (const char*)g_lora_datarecv, (const char*)"at+recv") != NULL))
+					}while( (strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) == NULL));
+					if( (strstr( (const char*)g_lora_datarecv, (const char*)"at+send")) != NULL)
+					#if !TEST_DOWNLINK //Since this will cause losing downlink data
 					{
-						printf("Receive downlink\n");
-						HAL_UART_Transmit(&huart1, g_lora_datarecv, strlen(g_lora_datarecv), 100);
+						printf("Send uplink completed\n");
+						LORA_test = RET_OK;
+						break;
 					}
+					#else	//Test downlink
+					{
+						do
+						{
+							if(HAL_UART_Receive_IT(&hlpuart1, &lora_datarecv, 1) == HAL_OK)
+							{
+								g_lora_datarecv[lora_dataindex++] = lora_datarecv;
+							}
+						}
+
+						while ( (strstr( (const char*)g_lora_datarecv, (const char*)"at+recv") == NULL));
+						printf("Send uplink completed\n");
+						if((strstr( (const char*)g_lora_datarecv, (const char*)"at+recv") != NULL))
+						{
+							printf("Receive downlink\n");
+							HAL_UART_Transmit(&huart1, g_lora_datarecv, strlen(g_lora_datarecv), 100);
+						}
+					}
+					#endif /*End of !TEST_DOWNLINK*/
 				}
-				#endif /*End of !TEST_DOWNLINK*/
 			}
+			/////////////////////////////// Sleeping //////////////////////////////////////////////
+			for (int retry_count = 0; retry_count < MAX_REJOIN; ++retry_count)
+			{
+				memset(g_lora_datarecv, 0, RAK_DATALEN);
+				lora_dataindex = 0;
+				if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_SLEEP, strlen(RAK4200_SLEEP), 100) == HAL_OK)
+				{
+					do
+					{
+						if( (HAL_UART_Receive_IT(&hlpuart1, &lora_datarecv, 1) == HAL_OK) && (lora_datarecv !=0) )
+						{
+							g_lora_datarecv[lora_dataindex++] = lora_datarecv;
+						}
+					}while( (strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) == NULL));
+						printf("LoRa Sleep\n");
+						break;
+				}
+			}
+			/////////////////////////////// Sleeping //////////////////////////////////////////////
 		}
 	}
 	#endif /* End of DEBUG_AT_UART */
@@ -1011,14 +1028,23 @@ void EnterStopMode( void)
 	printf("Entering stop 2 mode...\n");
     //GPIO Deinit if needed
 
+	//Place CPU2 in Shutdown mode
+	LL_C2_PWR_SetPowerMode(LL_PWR_MODE_SHUTDOWN);
+
+	//
+	LL_EXTI_DisableIT_32_63(LL_EXTI_LINE_48);
+	LL_C2_EXTI_DisableIT_32_63(LL_EXTI_LINE_48);
+
+
     //Debug in stop mode
-    HAL_DBGMCU_EnableDBGStopMode();
+//    HAL_DBGMCU_EnableDBGStopMode();
 
     // Stop SYSTICK Timer
     HAL_SuspendTick();
 
     // Enter Stop Mode
-    HAL_PWREx_EnterSTOP2Mode(PWR_STOPENTRY_WFI);
+    HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
+//    HAL_PWREx_EnterSTOP2Mode(PWR_STOPENTRY_WFI);
 
     //Wake up
     SystemClock_Config();
@@ -1085,9 +1111,64 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	}
 }
 
+void Alarm_Init(void)
+{
+	RTC_AlarmTypeDef sAlarm = {0};
+	RTC_TimeTypeDef curTime = {0};
+	RTC_DateTypeDef curDate = {0};
+	HAL_RTC_GetDate(&hrtc, &curDate, RTC_FORMAT_BIN);
+	HAL_RTC_GetTime(&hrtc, &curTime, RTC_FORMAT_BIN);
+	sAlarm.AlarmTime.Hours = curTime.Hours;
+	sAlarm.AlarmTime.Minutes = curTime.Minutes + TEST_ITV;
+	sAlarm.AlarmTime.Seconds = curTime.Seconds;
+	sAlarm.AlarmTime.SubSeconds = 0;
+	sAlarm.AlarmTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+	sAlarm.AlarmTime.StoreOperation = RTC_STOREOPERATION_RESET;
+	sAlarm.AlarmMask = RTC_ALARMMASK_NONE;
+	sAlarm.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_ALL;
+	sAlarm.AlarmDateWeekDaySel = RTC_ALARMDATEWEEKDAYSEL_DATE;
+	sAlarm.AlarmDateWeekDay = 1;
+	sAlarm.Alarm = RTC_ALARM_A;
+	if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN) != HAL_OK)
+	{
+	  Error_Handler();
+	}
+}
+
 void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
 {
+	RTC_AlarmTypeDef cur_alarm;
+	HAL_RTC_GetAlarm(hrtc, &cur_alarm, RTC_ALARM_A, FORMAT_BIN);
+	cur_alarm.AlarmTime.Minutes +=TEST_ITV;
+	cur_alarm.AlarmTime.Minutes %=60;
+	HAL_RTC_DeactivateAlarm(hrtc, RTC_ALARM_A);
+	HAL_RTC_SetAlarm_IT(hrtc, &cur_alarm, FORMAT_BIN);
 	g_rtcwakeup = true;
+}
+
+/* ---------Convert_2Char(uint8_t numb_in)--------------
+ * Operating: Convert number to character
+ * Input:  Number want to convert to char
+ * Output: corresponding char character
+ * 0 - 9 -> '0' -> '9'
+ * 0x0A  ->0x0F return 'A'->'F'
+-------------------------------------------------------*/
+char Convert_2Char(uint8_t numb_in){
+	char char_out;
+    if(numb_in<0x0A)  char_out=numb_in+0x30; //0-9 return '0'-'9'
+    else              char_out=numb_in+55;   //0x0A-0x0F return 'A'-'F'
+    return char_out;
+}
+
+void ConvertData(uint8_t* p_ui8buffer, uint16_t ui16data)
+{
+	uint16_t nibble;
+	for (int count = 0; count < 4; ++count)
+	{
+		nibble = ui16data & 0x0F;
+		ui16data >>= 4;
+		p_ui8buffer[3-count] = Convert_2Char(nibble);
+	}
 }
 /**************************************************************************************/
 /* USER CODE END 4 */
