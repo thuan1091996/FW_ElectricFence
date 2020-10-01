@@ -49,7 +49,8 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOE_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, EEPROM_EN_Pin|GPS_EN_Pin|DISTANCE_EN_Pin|RAK_EN_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, EEPROM_EN_Pin|GPS_EN_Pin|DISTANCE_EN_Pin|EN_BATT_Pin
+                          |RAK_EN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(D3_GPIO_Port, D3_Pin, GPIO_PIN_RESET);
@@ -66,8 +67,10 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(WK_ACL_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PAPin PAPin PAPin PAPin */
-  GPIO_InitStruct.Pin = EEPROM_EN_Pin|GPS_EN_Pin|DISTANCE_EN_Pin|RAK_EN_Pin;
+  /*Configure GPIO pins : PAPin PAPin PAPin PAPin
+                           PAPin */
+  GPIO_InitStruct.Pin = EEPROM_EN_Pin|GPS_EN_Pin|DISTANCE_EN_Pin|EN_BATT_Pin
+                          |RAK_EN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

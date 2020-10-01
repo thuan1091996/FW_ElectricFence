@@ -19,6 +19,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
 #include "dma.h"
 #include "i2c.h"
 #include "usart.h"
@@ -98,7 +99,8 @@ typedef struct {
 #define EEPROM_TEST 		USED
 #define	ACL_TEST			USED
 #define	DISTANCE_TEST		USED
-#define GPS_TEST			USED
+#define GPS_TEST			NOT_USED
+#define ADC_TEST			USED
 #define LORA_TEST			NOT_USED
 #define CHANGE_DEVEUI		USED
 #define TEST_DOWNLINK		NOT_USED
@@ -139,6 +141,7 @@ PUTCHAR_PROTOTYPE
 volatile bool g_acl_interrupt=false;
 volatile bool g_rak4200_newdata=false;
 volatile bool g_rtcwakeup=false;
+volatile bool g_testingble=false;
 RTC_TimeTypeDef curTime = {0};
 RTC_DateTypeDef curDate = {0};
 RTC_TimeTypeDef eventTime = {0};
@@ -169,7 +172,7 @@ eTestStatus BLE_FWTest(void);
 
 void ButtonsHandler(void);
 void EnterStopMode(void);
-
+void DebugProbeInit(void);
 #endif /*End of FW_TEST*/
 /* USER CODE END PFP */
 
@@ -213,13 +216,14 @@ int main(void)
   MX_I2C1_Init();
   MX_LPUART1_UART_Init();
   MX_TIM16_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   Sys_Test();
 //  FW_Test1();
 
   printf("Testing BLE function (including button test)\n");
   /* USER CODE END 2 */
-
+  g_testingble = true; /* Enable notification when pressing button */
   /* Init code for STM32_WPAN */
   APPE_Init();
   /* Infinite loop */
@@ -285,10 +289,12 @@ void SystemClock_Config(void)
   */
   PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SMPS|RCC_PERIPHCLK_RFWAKEUP
                               |RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART1
-                              |RCC_PERIPHCLK_LPUART1|RCC_PERIPHCLK_I2C1;
+                              |RCC_PERIPHCLK_LPUART1|RCC_PERIPHCLK_I2C1
+                              |RCC_PERIPHCLK_ADC;
   PeriphClkInitStruct.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
   PeriphClkInitStruct.Lpuart1ClockSelection = RCC_LPUART1CLKSOURCE_LSE;
   PeriphClkInitStruct.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
+  PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_SYSCLK;
   PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
   PeriphClkInitStruct.RFWakeUpClockSelection = RCC_RFWKPCLKSOURCE_LSE;
   PeriphClkInitStruct.SmpsClockSelection = RCC_SMPSCLKSOURCE_HSI;
@@ -308,6 +314,7 @@ void SystemClock_Config(void)
 eTestStatus Sys_Test(void)
 {
 	SYS_test = RET_FAIL;
+	DebugProbeInit();
 	printf("FW Test started... \n");
 	printf("Testing ACL ...\n");
 	if(ACL_FWTest() == RET_OK )		printf("FW Test ACL: OK \n");
@@ -318,19 +325,20 @@ eTestStatus Sys_Test(void)
 	printf("Testing Distance sensor ...\n");
 	if(DISTANCE_FWTest() == RET_OK) printf("FW Test Distance: OK \n");
 	else							printf("FW Test Distance: Not OK \n");
-//	printf("Testing LoRa ...\n");
-//	if(LORA_FWTest() == RET_OK)	 	printf("FW Test LoRa: OK \n");
-//	else							printf("FW Test LoRa: Not OK \n");
-//	printf("Testing GPS ...\n");
-//	if(GPS_FWTest() == RET_OK)		printf("\nFW Test GPS: OK \n");
-//	else							printf("FW Test GPS: Not OK \n");
-//	ADC_FWTest();
-//	BLE_FWTest();
-//	SYS_test = 	EEPROM_test & ACL_test & DISTANCE_test & LORA_test & GPS_test & ADC_test; //ADC not available
-	SYS_test = 	EEPROM_test & ACL_test & DISTANCE_test & LORA_test & GPS_test; //ADC not available
+	printf("Testing GPS ...\n");
+	if(GPS_FWTest() == RET_OK)		printf("\nFW Test GPS: OK \n");
+	else							printf("FW Test GPS: Not OK \n");
+	printf("Testing LoRa ...\n");
+	if(LORA_FWTest() == RET_OK)	 	printf("FW Test LoRa: OK \n");
+	else							printf("FW Test LoRa: Not OK \n");
+	printf("Testing ADC ...\n");
+	if(ADC_FWTest() == RET_OK)	 	printf("FW Test ADC: OK \n");
+	else							printf("FW Test ADC: Not OK \n");
+	SYS_test = 	EEPROM_test & ACL_test & DISTANCE_test & LORA_test & GPS_test & ADC_test;
 	if(SYS_test == RET_OK)			printf("\nFW Test: OK \n");
 	else							printf("FW Test: Not OK \n");
 	EnterStopMode();
+	ButtonsHandler();
 	if(g_acl_interrupt == true)
 	{
 		printf("ACL detected motion \n");
@@ -343,7 +351,6 @@ eTestStatus Sys_Test(void)
 eTestStatus FW_Test1(void)
 {
 	eTestStatus fw1_teststatus = RET_FAIL;
-
 	printf("FW1 Test started... \n");
 	printf("Testing LoRa ...\n");
 	if(LORA_FWTest() == RET_OK)	 	printf("FW Test LoRa: OK \n"); /* Sending uplink after 30s */
@@ -380,6 +387,7 @@ eTestStatus FW_Test1(void)
 		}
 //		EnterStopMode();
 	}
+	return fw1_teststatus;
 
 }
 
@@ -700,6 +708,7 @@ static void Trigger_DistanceRX(void)
 static bool DISTANCE_GetData(float *distance_fl)
 {
 	bool retval = false;
+	HAL_GPIO_WritePin(DISTANCE_EN_GPIO_Port, DISTANCE_EN_Pin, GPIO_PIN_SET);
 	HAL_NVIC_EnableIRQ(DISTANCE_IRQ_SOURCE); 		//Enable GPIO interrupt of TX pin
 	Trigger_DistanceRX();
 	HAL_Delay(100);									//wait for new data
@@ -722,7 +731,7 @@ eTestStatus DISTANCE_FWTest(void)
 	uint16_t ui16distance=0;
 	DISTANCE_test = RET_FAIL;
 	HAL_GPIO_WritePin(DISTANCE_EN_GPIO_Port, DISTANCE_EN_Pin, GPIO_PIN_SET);
-
+	HAL_Delay(500);
 	#if DISTANCE_TEST
 	#if ENDLESS_LOOP_DYP
 	while(true)
@@ -822,11 +831,13 @@ eTestStatus LORA_FWTest(void)
 	#if DEBUG_AT_UART
 	HAL_GPIO_DeInit(GPIOA, GPIO_PIN_2);
 	HAL_GPIO_DeInit(GPIOA, GPIO_PIN_3);
+	HAL_GPIO_WritePin(RAK_EN_GPIO_Port, RAK_EN_Pin, GPIO_PIN_SET);
+			HAL_Delay(3000);
 	#else /* End of DEBUG_AT_UART  */
 
 	if(g_LoRaInit == false) //Init LoRa & LoRaWan parameter in case not initialized yet
 	{
-		for(int command_count = 0; command_count < INIT_COMMANDS; ++command_count) //Send devices initial commands
+		for(int command_count = 0; command_count < INIT_COMMANDS-1; ++command_count) //Send devices initial commands
 		{
 			//Clear buffer before receive new response
 			memset(g_lora_datarecv, 0, RAK_DATALEN);
@@ -920,25 +931,43 @@ eTestStatus LORA_FWTest(void)
 		}
 	}
 	///////		//////////////////////// Sleeping //////////////////////////////////////////////
-				for (int retry_count = 0; retry_count < MAX_REJOIN; ++retry_count)
+		for (int retry_count = 0; retry_count < MAX_REJOIN; ++retry_count)
+		{
+			memset(g_lora_datarecv, 0, RAK_DATALEN);
+			lora_dataindex = 0;
+			if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_SLEEP, strlen(RAK4200_SLEEP), 100) == HAL_OK)
+			{
+				do
 				{
-					memset(g_lora_datarecv, 0, RAK_DATALEN);
-					lora_dataindex = 0;
-					if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_SLEEP, strlen(RAK4200_SLEEP), 100) == HAL_OK)
+					if( (HAL_UART_Receive_IT(&hlpuart1, &lora_datarecv, 1) == HAL_OK) && (lora_datarecv !=0) )
 					{
-						do
-						{
-							if( (HAL_UART_Receive_IT(&hlpuart1, &lora_datarecv, 1) == HAL_OK) && (lora_datarecv !=0) )
-							{
-								g_lora_datarecv[lora_dataindex++] = lora_datarecv;
-							}
-						}while( (strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) == NULL));
-							printf("LoRa Sleep\n");
-							break;
+						g_lora_datarecv[lora_dataindex++] = lora_datarecv;
 					}
-				}
-				LORA_test = RET_OK;
-				/////////////////////////////// Sleeping //////////////////////////////////////////////
+				}while( (strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) == NULL));
+					printf("LoRa Sleep\n");
+					LORA_test = RET_OK;
+					break;
+			}
+		}
+			/////////////////////////////// Sleeping //////////////////////////////////////////////
+//			for (int retry_count = 0; retry_count < MAX_REJOIN; ++retry_count)
+//			{
+//				memset(g_lora_datarecv, 0, RAK_DATALEN);
+//				lora_dataindex = 0;
+//				if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_SLEEP, strlen(RAK4200_SLEEP), 100) == HAL_OK)
+//				{
+//					do
+//					{
+//						if( (HAL_UART_Receive_IT(&hlpuart1, &lora_datarecv, 1) == HAL_OK) && (lora_datarecv !=0) )
+//						{
+//							g_lora_datarecv[lora_dataindex++] = lora_datarecv;
+//						}
+//					}while( (strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) == NULL));
+//						printf("LoRa Sleep\n");
+//						break;
+//				}
+//			}
+			/////////////////////////////// Sleeping //////////////////////////////////////////////
 	#endif /* End of DEBUG_AT_UART */
 	#endif /* End of LORA_TEST */
 	return LORA_test;
@@ -1002,7 +1031,34 @@ eTestStatus GPS_FWTest(void)
 }
 
 /**************************************************************************************/
-/* GPS sensor FW TEST - Read data */
+/* ADC FW Test */
+#define BUF_SIZE	2
+uint32_t g_ui32vref=0;
+uint32_t g_ui32input=0;
+uint32_t g_ui32ADCraw[BUF_SIZE]={0};
+uint32_t g_ui32bat=0;
+volatile bool g_newadcdata=false;
+volatile bool g_endseq=false;
+eTestStatus ADC_FWTest(void)
+{
+	ADC_test = RET_FAIL;
+	#ifdef ADC_TEST
+	HAL_GPIO_WritePin(EN_BATT_GPIO_Port, EN_BATT_Pin, GPIO_PIN_SET);
+	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+	HAL_ADC_Start_IT(&hadc1);
+	while(g_newadcdata != true);
+	ADC_test = RET_OK;
+	HAL_ADC_Stop_IT(&hadc1);
+	g_ui32vref = __LL_ADC_CALC_VREFANALOG_VOLTAGE(g_ui32ADCraw[0], ADC_RESOLUTION_12B);
+	g_ui32input= __LL_ADC_CALC_DATA_TO_VOLTAGE(g_ui32vref, g_ui32ADCraw[1], ADC_RESOLUTION_12B);
+	g_ui32bat = 4 * g_ui32input;
+	printf("Battery voltages: %ld (mV)\n",g_ui32bat);
+	g_newadcdata = false;
+	#endif /*End of ADC_TEST*/
+	return ADC_test;
+}
+
+/**************************************************************************************/
 volatile bool g_buttonpressed=false;
 volatile uint16_t g_countbuttonpress=0;
 void ButtonsHandler(void)
@@ -1028,28 +1084,45 @@ void ButtonsHandler(void)
 /**************************************************************************************/
 /* Additional functions for testing */
 
+void DebugProbeInit(void)
+{
+	GPIO_InitTypeDef GPIOA_InitStructure;
+	GPIOA_InitStructure.Pin = PROBE1 | PROBE2;
+	GPIOA_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIOA_InitStructure.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(PROBE_PORT, &GPIOA_InitStructure);
+	HAL_GPIO_WritePin(PROBE_PORT, PROBE1 | PROBE2, GPIO_PIN_RESET);
+}
+
 void EnterStopMode( void)
 {
 
 	printf("Entering stop 2 mode...\n");
-	GPIO_InitTypeDef GPIO_InitStructure;
-	GPIO_InitStructure.Pin = GPIO_PIN_All;
-	GPIO_InitStructure.Mode = GPIO_MODE_ANALOG;
-	GPIO_InitStructure.Pull = GPIO_NOPULL;
-
-	HAL_GPIO_Init(GPIOA, &GPIO_InitStructure);
-	HAL_GPIO_Init(GPIOB, &GPIO_InitStructure);
-	HAL_GPIO_Init(GPIOC, &GPIO_InitStructure);
-	HAL_GPIO_Init(GPIOE, &GPIO_InitStructure);
-	HAL_GPIO_Init(GPIOH, &GPIO_InitStructure);
+//	GPIO_InitTypeDef GPIO_InitStructure;
+//	GPIO_InitStructure.Pin = GPIO_PIN_All;
+//	GPIO_InitStructure.Mode = GPIO_MODE_ANALOG;
+//	GPIO_InitStructure.Pull = GPIO_NOPULL;
+//
+//	HAL_GPIO_Init(GPIOA, &GPIO_InitStructure);
+//	HAL_GPIO_Init(GPIOB, &GPIO_InitStructure);
+//	HAL_GPIO_Init(GPIOC, &GPIO_InitStructure);
+//	HAL_GPIO_Init(GPIOE, &GPIO_InitStructure);
+//	HAL_GPIO_Init(GPIOH, &GPIO_InitStructure);
+//
+    /* Button interrupt */
+    GPIO_InitTypeDef GPIOButton_InitStructure;
+    GPIOButton_InitStructure.Pin = SW_DIS_Pin;
+    GPIOButton_InitStructure.Mode = GPIO_MODE_IT_RISING;
+    GPIOButton_InitStructure.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(SW_DIS_GPIO_Port, &GPIOButton_InitStructure);
 
 	// Module control pins -> low output
 	GPIO_InitTypeDef GPIOA_InitStructure;
-	GPIOA_InitStructure.Pin = GPIO_PIN_10| EEPROM_EN_Pin| DISTANCE_EN_Pin| RAK_EN_Pin| GPS_EN_Pin;
+	GPIOA_InitStructure.Pin = EN_BATT_Pin| EEPROM_EN_Pin| DISTANCE_EN_Pin| RAK_EN_Pin| GPS_EN_Pin;
 	GPIOA_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIOA_InitStructure.Pull = GPIO_NOPULL;
 	HAL_GPIO_Init(GPIOA, &GPIOA_InitStructure);
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);   /* Turn off Batt */
+	HAL_GPIO_WritePin(EN_BATT_GPIO_Port, EN_BATT_Pin, GPIO_PIN_RESET);   /* Turn off Batt */
 	HAL_GPIO_WritePin(EEPROM_EN_GPIO_Port, EEPROM_EN_Pin, GPIO_PIN_RESET); /* Turn off EEPROM */
 	HAL_GPIO_WritePin(DISTANCE_EN_GPIO_Port, DISTANCE_EN_Pin, GPIO_PIN_RESET);	/* Turn off Distance */
 	HAL_GPIO_WritePin(RAK_EN_GPIO_Port, RAK_EN_Pin, GPIO_PIN_RESET);	/* Turn off RAk4200 */
@@ -1057,36 +1130,32 @@ void EnterStopMode( void)
 
 	/* Disable GPIOs clock */
 //	__HAL_RCC_GPIOA_CLK_DISABLE();
-	__HAL_RCC_GPIOB_CLK_DISABLE();
-	__HAL_RCC_GPIOC_CLK_DISABLE();
-	__HAL_RCC_GPIOE_CLK_DISABLE();
-	__HAL_RCC_GPIOH_CLK_DISABLE();
+//	__HAL_RCC_GPIOB_CLK_DISABLE();
+//	__HAL_RCC_GPIOC_CLK_DISABLE();
+//	__HAL_RCC_GPIOE_CLK_DISABLE();
+//	__HAL_RCC_GPIOH_CLK_DISABLE();
 
-	HAL_GPIO_WritePin(EEPROM_EN_GPIO_Port, GPIO_PIN_10, GPIO_PIN_RESET);   /* Turn off Batt */
-	HAL_GPIO_WritePin(EEPROM_EN_GPIO_Port, EEPROM_EN_Pin, GPIO_PIN_RESET); /* Turn off EEPROM */
-	HAL_GPIO_WritePin(DISTANCE_EN_GPIO_Port, DISTANCE_EN_Pin, GPIO_PIN_RESET);	/* Turn off Distance */
-	HAL_GPIO_WritePin(RAK_EN_GPIO_Port, RAK_EN_Pin, GPIO_PIN_RESET);	/* Turn off RAk4200 */
-	HAL_GPIO_WritePin(GPS_EN_GPIO_Port, GPS_EN_Pin, GPIO_PIN_RESET);	/* Turn off GPS */
-    LL_C2_PWR_SetPowerMode(LL_PWR_MODE_SHUTDOWN);
+//    LL_C2_PWR_SetPowerMode(LL_PWR_MODE_SHUTDOWN);
+
 
 
 //    HAL_DBGMCU_EnableDBGStopMode();
 
-    __HAL_RCC_ADC_CLK_DISABLE();
-	__HAL_RCC_C2USB_CLK_DISABLE();
-	__HAL_RCC_USB_CLK_DISABLE();
-	__HAL_PWR_VDDUSB_DISABLE();
-	LL_VREFBUF_Disable();
-	HAL_PWR_DisablePVD();
-	HAL_PWR_DisableBkUpAccess();
-	HAL_PWREx_DisableVddUSB();
-	LL_RCC_LSI1_Disable();
-	LL_RCC_LSI2_Disable();
-	LL_RCC_LSE_DisableCSS();
-	LL_RCC_LSE_Disable();
-	PWR->CR1 &= ~(PWR_CR1_LPR);
-	LL_PWR_SetBORConfig(LL_PWR_BOR_SMPS_FORCE_BYPASS);
-	LL_PWR_SMPS_SetMode(LL_PWR_SMPS_BYPASS);
+//    __HAL_RCC_ADC_CLK_DISABLE();
+//	__HAL_RCC_C2USB_CLK_DISABLE();
+//	__HAL_RCC_USB_CLK_DISABLE();
+//	__HAL_PWR_VDDUSB_DISABLE();
+//	LL_VREFBUF_Disable();
+//	HAL_PWR_DisablePVD();
+//	HAL_PWR_DisableBkUpAccess();
+//	HAL_PWREx_DisableVddUSB();
+//	LL_RCC_LSI1_Disable();
+//	LL_RCC_LSI2_Disable();
+//	LL_RCC_LSE_DisableCSS();
+//	LL_RCC_LSE_Disable();
+//	PWR->CR1 &= ~(PWR_CR1_LPR);
+//	LL_PWR_SetBORConfig(LL_PWR_BOR_SMPS_FORCE_BYPASS);
+//	LL_PWR_SMPS_SetMode(LL_PWR_SMPS_BYPASS);
 
     // Stop SYSTICK Timer
     HAL_SuspendTick();
@@ -1243,6 +1312,20 @@ HAL_StatusTypeDef I2C_Transferring(tI2CPackage *I2CPackage_T)
 	return result;
 }
 
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+	 if(LL_ADC_IsActiveFlag_EOS(ADC1) != 0) /* EOS event */
+	 {
+		 g_ui32ADCraw[1] = HAL_ADC_GetValue(&hadc1);
+		 g_newadcdata = true;
+	 }
+	 else									/* EOC event */
+	 {
+		 g_ui32ADCraw[0] = HAL_ADC_GetValue(&hadc1);
+	 }
+}
+
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	static bool rising_dectected= false;
@@ -1273,7 +1356,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			break;
 
 		case SW_DIS_Pin:
-			UTIL_SEQ_SetTask(1<<CFG_TASK_SW1_BUTTON_PUSHED_ID, CFG_SCH_PRIO_0);
+			g_buttonpressed = true;
+			if(g_testingble == true)
+			{
+				UTIL_SEQ_SetTask(1<<CFG_TASK_SW1_BUTTON_PUSHED_ID, CFG_SCH_PRIO_0);
+			}
 			break;
 	}
 }
@@ -1315,3 +1402,4 @@ void assert_failed(uint8_t *file, uint32_t line)
 #endif /* USE_FULL_ASSERT */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+

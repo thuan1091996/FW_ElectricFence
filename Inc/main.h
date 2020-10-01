@@ -71,8 +71,12 @@ void Error_Handler(void);
 #define SW_DIS_EXTI_IRQn EXTI9_5_IRQn
 #define DISTANCE_EN_Pin GPIO_PIN_6
 #define DISTANCE_EN_GPIO_Port GPIOA
+#define ADC_BATT_Pin GPIO_PIN_9
+#define ADC_BATT_GPIO_Port GPIOA
 #define D3_Pin GPIO_PIN_4
 #define D3_GPIO_Port GPIOE
+#define EN_BATT_Pin GPIO_PIN_10
+#define EN_BATT_GPIO_Port GPIOA
 #define RAK_EN_Pin GPIO_PIN_15
 #define RAK_EN_GPIO_Port GPIOA
 #define PWM_CABLE_Pin GPIO_PIN_3
@@ -82,6 +86,9 @@ void Error_Handler(void);
 #define TRIGGER_CABLE_GPIO_Port GPIOB
 #define D2_Pin GPIO_PIN_5
 #define D2_GPIO_Port GPIOB
+#define PROBE1				GPIO_PIN_11
+#define PROBE2				GPIO_PIN_12
+#define PROBE_PORT			GPIOA
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

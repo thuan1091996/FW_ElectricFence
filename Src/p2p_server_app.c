@@ -83,10 +83,10 @@ void P2PS_STM_App_Notification(P2PS_STM_App_Notification_evt_t *pNotification)
     case P2PS_STM_WRITE_EVT:
 /* USER CODE BEGIN P2PS_STM_WRITE_EVT */
     	if(pNotification->DataTransfered.pPayload[1] == 0x01) {
-    	  HAL_GPIO_WritePin(D2_GPIO_Port, D2_Pin, GPIO_PIN_SET);
+    	  HAL_GPIO_WritePin(PROBE_PORT, PROBE1, GPIO_PIN_SET);
     	}
     	else {
-    	  HAL_GPIO_WritePin(D2_GPIO_Port, D2_Pin, GPIO_PIN_RESET);
+    	  HAL_GPIO_WritePin(PROBE_PORT, PROBE1, GPIO_PIN_RESET);
     	}
 /* USER CODE END P2PS_STM_WRITE_EVT */
       break;

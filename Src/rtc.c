@@ -72,7 +72,6 @@ void MX_RTC_Init(void)
   {
     Error_Handler();
   }
-#if 0
   /** Enable the Alarm A
   */
   sAlarm.AlarmTime.Hours = 0;
@@ -90,7 +89,7 @@ void MX_RTC_Init(void)
   {
     Error_Handler();
   }
-#endif
+
 }
 
 void HAL_RTC_MspInit(RTC_HandleTypeDef* rtcHandle)
