@@ -672,9 +672,9 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 #if(RADIO_ACTIVITY_EVENT != 0)
         case ACI_HAL_END_OF_RADIO_ACTIVITY_VSEVT_CODE:
         /* USER CODE BEGIN RADIO_ACTIVITY_EVENT*/
-		HAL_GPIO_TogglePin(D3_GPIO_Port, D3_Pin);
-		HAL_Delay(5);
-		HAL_GPIO_TogglePin(D3_GPIO_Port, D3_Pin);
+		HAL_GPIO_TogglePin(D2_GPIO_Port, D2_Pin);
+		HAL_Delay(10);
+
         /* USER CODE END RADIO_ACTIVITY_EVENT*/
           break; /* RADIO_ACTIVITY_EVENT */
 #endif

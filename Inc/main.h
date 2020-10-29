@@ -33,7 +33,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "stdbool.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -55,10 +55,12 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+void UART_GetDataDMA(uint8_t* pui8buffer);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define RX_DMABUF_LEN 100
+#define RX_BUF_LEN 100
 #define WK_ACL_Pin GPIO_PIN_0
 #define WK_ACL_GPIO_Port GPIOA
 #define WK_ACL_EXTI_IRQn EXTI0_IRQn
@@ -66,17 +68,19 @@ void Error_Handler(void);
 #define EEPROM_EN_GPIO_Port GPIOA
 #define GPS_EN_Pin GPIO_PIN_4
 #define GPS_EN_GPIO_Port GPIOA
-#define SW_DIS_Pin GPIO_PIN_5
+#define EN_BATT_Pin GPIO_PIN_5
+#define EN_BATT_GPIO_Port GPIOA
+#define ADC_BATT_Pin GPIO_PIN_6
+#define ADC_BATT_GPIO_Port GPIOA
+#define D1_Pin GPIO_PIN_7
+#define D1_GPIO_Port GPIOA
+#define D2_Pin GPIO_PIN_8
+#define D2_GPIO_Port GPIOA
+#define SW_DIS_Pin GPIO_PIN_9
 #define SW_DIS_GPIO_Port GPIOA
 #define SW_DIS_EXTI_IRQn EXTI9_5_IRQn
-#define DISTANCE_EN_Pin GPIO_PIN_6
-#define DISTANCE_EN_GPIO_Port GPIOA
-#define ADC_BATT_Pin GPIO_PIN_9
-#define ADC_BATT_GPIO_Port GPIOA
-#define D3_Pin GPIO_PIN_4
-#define D3_GPIO_Port GPIOE
-#define EN_BATT_Pin GPIO_PIN_10
-#define EN_BATT_GPIO_Port GPIOA
+#define DISTANCE_EN_Pin GPIO_PIN_0
+#define DISTANCE_EN_GPIO_Port GPIOB
 #define RAK_EN_Pin GPIO_PIN_15
 #define RAK_EN_GPIO_Port GPIOA
 #define PWM_CABLE_Pin GPIO_PIN_3
@@ -84,13 +88,12 @@ void Error_Handler(void);
 #define PWM_CABLE_EXTI_IRQn EXTI3_IRQn
 #define TRIGGER_CABLE_Pin GPIO_PIN_4
 #define TRIGGER_CABLE_GPIO_Port GPIOB
-#define D2_Pin GPIO_PIN_5
-#define D2_GPIO_Port GPIOB
+#define SHUTD_Pin GPIO_PIN_5
+#define SHUTD_GPIO_Port GPIOB
+/* USER CODE BEGIN Private defines */
 #define PROBE1				GPIO_PIN_11
 #define PROBE2				GPIO_PIN_12
 #define PROBE_PORT			GPIOA
-/* USER CODE BEGIN Private defines */
-
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

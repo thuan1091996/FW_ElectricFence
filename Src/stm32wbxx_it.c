@@ -59,7 +59,6 @@
 /* External variables --------------------------------------------------------*/
 extern ADC_HandleTypeDef hadc1;
 extern DMA_HandleTypeDef hdma_lpuart1_rx;
-extern DMA_HandleTypeDef hdma_usart1_rx;
 extern UART_HandleTypeDef hlpuart1;
 extern UART_HandleTypeDef huart1;
 extern RTC_HandleTypeDef hrtc;
@@ -247,20 +246,6 @@ void DMA1_Channel1_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles DMA1 channel2 global interrupt.
-  */
-void DMA1_Channel2_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
-
-  /* USER CODE END DMA1_Channel2_IRQn 0 */
-  HAL_DMA_IRQHandler(&hdma_usart1_rx);
-  /* USER CODE BEGIN DMA1_Channel2_IRQn 1 */
-
-  /* USER CODE END DMA1_Channel2_IRQn 1 */
-}
-
-/**
   * @brief This function handles ADC1 global interrupt.
   */
 void ADC1_IRQHandler(void)
@@ -282,7 +267,7 @@ void EXTI9_5_IRQHandler(void)
   /* USER CODE BEGIN EXTI9_5_IRQn 0 */
 
   /* USER CODE END EXTI9_5_IRQn 0 */
-  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_5);
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_9);
   /* USER CODE BEGIN EXTI9_5_IRQn 1 */
 
   /* USER CODE END EXTI9_5_IRQn 1 */
@@ -322,7 +307,13 @@ void USART1_IRQHandler(void)
 void LPUART1_IRQHandler(void)
 {
   /* USER CODE BEGIN LPUART1_IRQn 0 */
-
+	extern uint8_t g_lora_datarecv[];
+	if( (__HAL_UART_GET_IT_SOURCE(&hlpuart1, UART_IT_IDLE) == SET) &&		/* IDLE interrupt is enable */
+		(__HAL_UART_GET_IT(&hlpuart1, UART_IT_IDLE) == SET))				/* IDLE interrupt occurred */
+	{
+		UART_GetDataDMA(g_lora_datarecv);
+		__HAL_UART_CLEAR_FLAG(&hlpuart1,UART_CLEAR_IDLEF);
+	}
   /* USER CODE END LPUART1_IRQn 0 */
   HAL_UART_IRQHandler(&hlpuart1);
   /* USER CODE BEGIN LPUART1_IRQn 1 */

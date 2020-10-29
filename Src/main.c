@@ -93,15 +93,16 @@ typedef struct {
 #define NOT_USED			0
 #define ENDLESS_LOOP_ACL	NOT_USED
 #define ENDLESS_LOOP_DYP	NOT_USED
+#define ENDLESS_BATT_MEASURING	NOT_USED
 #define DEBUG_UART			USED
 #define DEBUG_AT_UART		NOT_USED
 #define FW_TEST				USED
 #define EEPROM_TEST 		USED
 #define	ACL_TEST			USED
 #define	DISTANCE_TEST		USED
-#define GPS_TEST			NOT_USED
+#define GPS_TEST			USED
 #define ADC_TEST			USED
-#define LORA_TEST			NOT_USED
+#define LORA_TEST			USED
 #define CHANGE_DEVEUI		USED
 #define TEST_DOWNLINK		NOT_USED
 ///////////////////////////////////////////////////////////////////////////////
@@ -218,12 +219,15 @@ int main(void)
   MX_TIM16_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
+  HAL_GPIO_TogglePin(D1_GPIO_Port, D1_Pin);
+  HAL_Delay(500);
+  HAL_GPIO_TogglePin(D1_GPIO_Port, D1_Pin);
   Sys_Test();
 //  FW_Test1();
 
   printf("Testing BLE function (including button test)\n");
   /* USER CODE END 2 */
-  g_testingble = true; /* Enable notification when pressing button */
+
   /* Init code for STM32_WPAN */
   APPE_Init();
   /* Infinite loop */
@@ -292,7 +296,7 @@ void SystemClock_Config(void)
                               |RCC_PERIPHCLK_LPUART1|RCC_PERIPHCLK_I2C1
                               |RCC_PERIPHCLK_ADC;
   PeriphClkInitStruct.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
-  PeriphClkInitStruct.Lpuart1ClockSelection = RCC_LPUART1CLKSOURCE_LSE;
+  PeriphClkInitStruct.Lpuart1ClockSelection = RCC_LPUART1CLKSOURCE_PCLK1;
   PeriphClkInitStruct.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
   PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_SYSCLK;
   PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
@@ -325,15 +329,15 @@ eTestStatus Sys_Test(void)
 	printf("Testing Distance sensor ...\n");
 	if(DISTANCE_FWTest() == RET_OK) printf("FW Test Distance: OK \n");
 	else							printf("FW Test Distance: Not OK \n");
-	printf("Testing GPS ...\n");
-	if(GPS_FWTest() == RET_OK)		printf("\nFW Test GPS: OK \n");
-	else							printf("FW Test GPS: Not OK \n");
 	printf("Testing LoRa ...\n");
 	if(LORA_FWTest() == RET_OK)	 	printf("FW Test LoRa: OK \n");
 	else							printf("FW Test LoRa: Not OK \n");
 	printf("Testing ADC ...\n");
 	if(ADC_FWTest() == RET_OK)	 	printf("FW Test ADC: OK \n");
 	else							printf("FW Test ADC: Not OK \n");
+	printf("Testing GPS ...\n");
+	if(GPS_FWTest() == RET_OK)		printf("\nFW Test GPS: OK \n");
+	else							printf("FW Test GPS: Not OK \n");
 	SYS_test = 	EEPROM_test & ACL_test & DISTANCE_test & LORA_test & GPS_test & ADC_test;
 	if(SYS_test == RET_OK)			printf("\nFW Test: OK \n");
 	else							printf("FW Test: Not OK \n");
@@ -344,7 +348,9 @@ eTestStatus Sys_Test(void)
 		printf("ACL detected motion \n");
 		g_acl_interrupt = false;
 	}
-	else printf("No ACL interrupt detected \n");
+	else printf("Wake up by button \n");
+	HAL_Delay(100);
+
 	return SYS_test;
 }
 
@@ -682,7 +688,7 @@ eTestStatus ACL_FWTest(void)
 		break;
 		#endif /* ENDLESS_LOOP_ACL */
 	}
-	ACL_Standby();
+//	ACL_Standby();
 	#endif /*End of ACL_Test*/
 	return ACL_test;
 }
@@ -767,7 +773,6 @@ eTestStatus DISTANCE_FWTest(void)
 #define RAK4200_SLEEP			"at+set_config=device:sleep:1\r\n"
 #define RAK4200_RESTART			"at+set_config=device:restart\r\n"
 #define	RAK4200_HELP			"at+help\r\n"
-
 #define RAK4200_GET_CONFIG		"at+get_config=lora:status\r\n"
 #define RAK4200_JOIN			"at+join\r\n"
 #define RAK4200_SET_DEVEUI		"at+set_config=lora:dev_eui:393331377c387234\r\n"
@@ -775,20 +780,17 @@ eTestStatus DISTANCE_FWTest(void)
 #define RAK4200_SET_APPKEY		"at+set_config=lora:app_key:44464d47524f555047454f3131323137\r\n"
 #define RAK4200_SET_GAP			"at+set_config=lora:send_interval:1:30\r\n" //Send interval = 60s
 #define RAK4200_SET_DR0			"at+set_config=lora:dr:0\r\n" 				//Data rate = 0
+#define RAK4200_SET_ADR			"at+set_config=lora:adr:1\r\n" 				//Data rate = 0
 #define RAK4200_SENDTEST		"at+send=lora:1:11\r\n"						//Send 0F0A via port 1
 #define RAK4200_TXTIMEOUT		10											//10ms
 
-#define RAK_DATALEN				100
-#define MAX_REJOIN				10
-
 #if CHANGE_DEVEUI
-#define INIT_COMMANDS			6
-#else
 #define INIT_COMMANDS			5
+#else
+#define INIT_COMMANDS			4
 #endif
 
-
-
+#define MAX_REJOIN				10
 #define RAK_RESP_OK				"OK"
 #define	RAK_RESP_NOTOK			"ERROR"
 
@@ -802,7 +804,7 @@ const char* LoRaInitCommands[] =
 	RAK4200_SET_APPEUI,
 	RAK4200_SET_APPKEY,
 	RAK4200_SET_DR0,
-	RAK4200_SET_GAP
+
 };
 
 typedef enum eLoRaState
@@ -818,80 +820,123 @@ typedef enum eLoRaState
 eLoRaState LoRa_curState = DEVICE_STATE_RESTORE;
 
 bool g_LoRaInit = false;
-uint8_t g_lora_datarecv[RAK_DATALEN]={0};
-
+uint8_t g_lora_datarecv[RX_BUF_LEN]={0};
+uint8_t g_rxdmabuffer[RX_DMABUF_LEN]={0};
+volatile bool g_dmaoverflow=false;
+volatile bool g_dmanewdata=false;
+#define TEST_DMA	1
 eTestStatus LORA_FWTest(void)
 {
 	uint8_t lora_datarecv=0;
 	uint8_t lora_dataindex=0;
 	LORA_test = RET_FAIL;
 	#if LORA_TEST
+	HAL_Delay(1000);
 	HAL_GPIO_WritePin(RAK_EN_GPIO_Port, RAK_EN_Pin, GPIO_PIN_SET);
-	HAL_Delay(3000);												//Wait for stable
+	HAL_Delay(2000);												//Wait for stable
 	#if DEBUG_AT_UART
 	HAL_GPIO_DeInit(GPIOA, GPIO_PIN_2);
 	HAL_GPIO_DeInit(GPIOA, GPIO_PIN_3);
-	HAL_GPIO_WritePin(RAK_EN_GPIO_Port, RAK_EN_Pin, GPIO_PIN_SET);
-			HAL_Delay(3000);
-	#else /* End of DEBUG_AT_UART  */
-
+	#else 															/* End of DEBUG_AT_UART  */
+	__HAL_UART_ENABLE_IT(&hlpuart1,UART_IT_IDLE); 					/* Enable UART RX Idle interrupt */
+	HAL_UART_Receive_DMA(&hlpuart1, g_rxdmabuffer, RX_DMABUF_LEN);  /* Enable receive data via DMA */
 	if(g_LoRaInit == false) //Init LoRa & LoRaWan parameter in case not initialized yet
 	{
-		for(int command_count = 0; command_count < INIT_COMMANDS-1; ++command_count) //Send devices initial commands
+		printf("Configuring RAK4200 \r\n");
+		for(int command_count = 0; command_count < INIT_COMMANDS; ) /* Send devices initial commands */
 		{
 			//Clear buffer before receive new response
-			memset(g_lora_datarecv, 0, RAK_DATALEN);
+			memset(g_lora_datarecv, 0, RX_BUF_LEN);
 			lora_dataindex = 0;
 			//Send commands and wait for response in case of successfully transmit command
 			if(HAL_UART_Transmit(&hlpuart1, (uint8_t*)LoRaInitCommands[command_count], strlen(LoRaInitCommands[command_count]), 100) == HAL_OK)
 			{
-				do
+				HAL_Delay(500);
+				if(g_dmanewdata == true)
 				{
-					if( (HAL_UART_Receive_IT(&hlpuart1, &lora_datarecv, 1) == HAL_OK) && (lora_datarecv !=0) )
+					// Response OK
+					if(strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) != NULL)
 					{
-						g_lora_datarecv[lora_dataindex++] = lora_datarecv;
+						command_count++;
 					}
+					// Response NOT OK
+					else if (strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_NOTOK) != NULL)
+					{
+					}
+					g_dmanewdata = false;
+					HAL_Delay(100);
 				}
-				while ( (strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) == NULL) &&
-						(strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_NOTOK) == NULL) );
 			}
-			strcat((char*)g_lora_datarecv, "\r\n");
-			HAL_UART_Transmit(&huart1, g_lora_datarecv, strlen((const char*) g_lora_datarecv), 100);
 		}
+		printf("Configure device successfully\r\n");
 		LoRa_curState = DEVICE_STATE_STARTED;
 		g_LoRaInit = true;
 	}
+	if(LoRa_curState != DEVICE_STATE_STARTED) {printf("Test LoRa failed \n"); return LORA_test;}
 	//Testing Joining
 	printf("Joining ... \n");
 	for (int retry_count = 0; retry_count < MAX_REJOIN; ++retry_count)
 	{
-		memset(g_lora_datarecv, 0, RAK_DATALEN);
+		memset(g_lora_datarecv, 0, RX_BUF_LEN);
 		lora_dataindex = 0;
+		HAL_Delay(10000);
 		if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_JOIN, strlen(RAK4200_JOIN), 100) == HAL_OK)
 		{
-			do
+			if(g_dmanewdata == true)
 			{
-				if( (HAL_UART_Receive_IT(&hlpuart1, &lora_datarecv, 1) == HAL_OK) && (lora_datarecv !=0) )
+				// Response OK
+				if (strstr( (const char*)g_lora_datarecv, (const char*)"Join Success") != NULL)
 				{
-					g_lora_datarecv[lora_dataindex++] = lora_datarecv;
+					LoRa_curState = DEVICE_STATE_JOINED;
+					printf("Joined successfully\n");
+					g_dmanewdata = false;
+					HAL_Delay(100);
+					break;
 				}
-			}while( (strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) == NULL));
-			if( (strstr( (const char*)g_lora_datarecv, (const char*)"Join Success") != NULL) )
-			{
-				LoRa_curState = DEVICE_STATE_JOINED;
-				printf("Joined successfully\n");
+				// Response NOT OK
+				printf("Re-joining %d \r\n",retry_count);
+				g_dmanewdata = false;
 				HAL_Delay(100);
-				break;
 			}
 		}
 	}
-
 	// Testing transfer data (up/downlink messages)
+	#if TEST_DMA
+	if(LoRa_curState == DEVICE_STATE_JOINED)
+	{
+		printf("Sending uplink\n");
+		for (int retry_count = 0; retry_count < MAX_REJOIN; )
+		{
+			memset(g_lora_datarecv, 0, RX_BUF_LEN);
+			lora_dataindex = 0;
+			HAL_Delay(5000);
+			if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_SENDTEST, strlen(RAK4200_SENDTEST), 100) == HAL_OK)
+			{
+				if(g_dmanewdata == true)
+				{
+					retry_count++;
+					// Response OK
+					if(strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) != NULL)
+					{
+						printf("Send uplink completed\n");
+						LORA_test = true;
+						g_dmanewdata = false;
+						break;
+					}
+						printf("Re-send uplink %d \n", retry_count);
+						g_dmanewdata = false;
+						HAL_Delay(100);
+				}
+			}
+		}
+	}
+	#else
+
 	if(LoRa_curState == DEVICE_STATE_JOINED)
 	{
 		for (int retry_count = 0; retry_count < MAX_REJOIN; ++retry_count)
 		{
-			memset(g_lora_datarecv, 0, RAK_DATALEN);
+			memset(g_lora_datarecv, 0, RX_BUF_LEN);
 			lora_dataindex = 0;
 			if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_SENDTEST, strlen(RAK4200_SENDTEST), 100) == HAL_OK)
 			{
@@ -930,47 +975,60 @@ eTestStatus LORA_FWTest(void)
 			}
 		}
 	}
-	///////		//////////////////////// Sleeping //////////////////////////////////////////////
-		for (int retry_count = 0; retry_count < MAX_REJOIN; ++retry_count)
+	#if TEST_SLEEPLORA
+	for (int retry_count = 0; retry_count < MAX_REJOIN; ++retry_count)
+	{
+		memset(g_lora_datarecv, 0, RX_BUF_LEN);
+		lora_dataindex = 0;
+		if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_SLEEP, strlen(RAK4200_SLEEP), 100) == HAL_OK)
 		{
-			memset(g_lora_datarecv, 0, RAK_DATALEN);
-			lora_dataindex = 0;
-			if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_SLEEP, strlen(RAK4200_SLEEP), 100) == HAL_OK)
+			do
 			{
-				do
+				if( (HAL_UART_Receive_IT(&hlpuart1, &lora_datarecv, 1) == HAL_OK) && (lora_datarecv !=0) )
 				{
-					if( (HAL_UART_Receive_IT(&hlpuart1, &lora_datarecv, 1) == HAL_OK) && (lora_datarecv !=0) )
-					{
-						g_lora_datarecv[lora_dataindex++] = lora_datarecv;
-					}
-				}while( (strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) == NULL));
-					printf("LoRa Sleep\n");
-					LORA_test = RET_OK;
-					break;
-			}
+					g_lora_datarecv[lora_dataindex++] = lora_datarecv;
+				}
+			}while( (strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) == NULL));
+				printf("LoRa Sleep\n");
+				break;
 		}
-			/////////////////////////////// Sleeping //////////////////////////////////////////////
-//			for (int retry_count = 0; retry_count < MAX_REJOIN; ++retry_count)
-//			{
-//				memset(g_lora_datarecv, 0, RAK_DATALEN);
-//				lora_dataindex = 0;
-//				if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_SLEEP, strlen(RAK4200_SLEEP), 100) == HAL_OK)
-//				{
-//					do
-//					{
-//						if( (HAL_UART_Receive_IT(&hlpuart1, &lora_datarecv, 1) == HAL_OK) && (lora_datarecv !=0) )
-//						{
-//							g_lora_datarecv[lora_dataindex++] = lora_datarecv;
-//						}
-//					}while( (strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) == NULL));
-//						printf("LoRa Sleep\n");
-//						break;
-//				}
-//			}
-			/////////////////////////////// Sleeping //////////////////////////////////////////////
+	}
+	#endif /*End of TEST_DMA*/
+	#endif /*End of TEST_SLEEPLORA*/
 	#endif /* End of DEBUG_AT_UART */
 	#endif /* End of LORA_TEST */
 	return LORA_test;
+}
+
+void UART_GetDataDMA(uint8_t* pui8buffer)
+{
+	static uint32_t old_pos=0;
+	uint32_t pos=0;
+	/* Calculate current position in buffer */
+	pos = RX_DMABUF_LEN - LL_DMA_GetDataLength(DMA1, LL_DMA_CHANNEL_1);
+	if (pos != old_pos)		/* Check change in received data */
+	{
+		if (pos > old_pos)	/* Current position is over previous one */
+		{
+			/* We are in "linear" mode */
+			/* Process data directly by subtracting "pointers" */
+			memcpy(pui8buffer, &g_rxdmabuffer[old_pos], pos - old_pos);
+		}
+		else
+		{
+			/* We are in "overflow" mode */
+			/* First process data to the end of buffer */
+			memcpy(pui8buffer, &g_rxdmabuffer[old_pos], RX_DMABUF_LEN - old_pos);
+			/* Check and continue with beginning of buffer */
+			if (pos > 0)
+			{
+				memcpy((pui8buffer+(RX_DMABUF_LEN - old_pos)), &g_rxdmabuffer[0], pos);
+			}
+		}
+		g_dmanewdata = true;
+	}
+	old_pos = pos;	/* Save current position as old */
+	g_dmaoverflow = false;	/* Make sure that data never overflow twice */
 }
 
 /**************************************************************************************/
@@ -1021,6 +1079,7 @@ eTestStatus GPS_FWTest(void)
 {
 	GPS_test = RET_FAIL;
 	#if GPS_TEST
+	HAL_Delay(1000);
 	HAL_GPIO_WritePin(GPS_EN_GPIO_Port, GPS_EN_Pin, GPIO_PIN_SET);
 	HAL_Delay(3000);												//Wait for GPS supply power stable
 	if (GPS_Settings() == true) GPS_test = RET_OK;
@@ -1044,6 +1103,9 @@ eTestStatus ADC_FWTest(void)
 	ADC_test = RET_FAIL;
 	#ifdef ADC_TEST
 	HAL_GPIO_WritePin(EN_BATT_GPIO_Port, EN_BATT_Pin, GPIO_PIN_SET);
+	HAL_Delay(100);			/* Wait for stable */
+	while(1)
+	{
 	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
 	HAL_ADC_Start_IT(&hadc1);
 	while(g_newadcdata != true);
@@ -1054,6 +1116,10 @@ eTestStatus ADC_FWTest(void)
 	g_ui32bat = 4 * g_ui32input;
 	printf("Battery voltages: %ld (mV)\n",g_ui32bat);
 	g_newadcdata = false;
+	#if !ENDLESS_BATT_MEASURING
+	break;
+	#endif /*End of ENDLESS_BATT_MEASURING*/
+	}
 	#endif /*End of ADC_TEST*/
 	return ADC_test;
 }
@@ -1098,17 +1164,6 @@ void EnterStopMode( void)
 {
 
 	printf("Entering stop 2 mode...\n");
-//	GPIO_InitTypeDef GPIO_InitStructure;
-//	GPIO_InitStructure.Pin = GPIO_PIN_All;
-//	GPIO_InitStructure.Mode = GPIO_MODE_ANALOG;
-//	GPIO_InitStructure.Pull = GPIO_NOPULL;
-//
-//	HAL_GPIO_Init(GPIOA, &GPIO_InitStructure);
-//	HAL_GPIO_Init(GPIOB, &GPIO_InitStructure);
-//	HAL_GPIO_Init(GPIOC, &GPIO_InitStructure);
-//	HAL_GPIO_Init(GPIOE, &GPIO_InitStructure);
-//	HAL_GPIO_Init(GPIOH, &GPIO_InitStructure);
-//
     /* Button interrupt */
     GPIO_InitTypeDef GPIOButton_InitStructure;
     GPIOButton_InitStructure.Pin = SW_DIS_Pin;
@@ -1117,46 +1172,13 @@ void EnterStopMode( void)
 	HAL_GPIO_Init(SW_DIS_GPIO_Port, &GPIOButton_InitStructure);
 
 	// Module control pins -> low output
-	GPIO_InitTypeDef GPIOA_InitStructure;
-	GPIOA_InitStructure.Pin = EN_BATT_Pin| EEPROM_EN_Pin| DISTANCE_EN_Pin| RAK_EN_Pin| GPS_EN_Pin;
-	GPIOA_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIOA_InitStructure.Pull = GPIO_NOPULL;
-	HAL_GPIO_Init(GPIOA, &GPIOA_InitStructure);
 	HAL_GPIO_WritePin(EN_BATT_GPIO_Port, EN_BATT_Pin, GPIO_PIN_RESET);   /* Turn off Batt */
 	HAL_GPIO_WritePin(EEPROM_EN_GPIO_Port, EEPROM_EN_Pin, GPIO_PIN_RESET); /* Turn off EEPROM */
 	HAL_GPIO_WritePin(DISTANCE_EN_GPIO_Port, DISTANCE_EN_Pin, GPIO_PIN_RESET);	/* Turn off Distance */
 	HAL_GPIO_WritePin(RAK_EN_GPIO_Port, RAK_EN_Pin, GPIO_PIN_RESET);	/* Turn off RAk4200 */
 	HAL_GPIO_WritePin(GPS_EN_GPIO_Port, GPS_EN_Pin, GPIO_PIN_RESET);	/* Turn off GPS */
-
-	/* Disable GPIOs clock */
-//	__HAL_RCC_GPIOA_CLK_DISABLE();
-//	__HAL_RCC_GPIOB_CLK_DISABLE();
-//	__HAL_RCC_GPIOC_CLK_DISABLE();
-//	__HAL_RCC_GPIOE_CLK_DISABLE();
-//	__HAL_RCC_GPIOH_CLK_DISABLE();
-
-//    LL_C2_PWR_SetPowerMode(LL_PWR_MODE_SHUTDOWN);
-
-
-
-//    HAL_DBGMCU_EnableDBGStopMode();
-
-//    __HAL_RCC_ADC_CLK_DISABLE();
-//	__HAL_RCC_C2USB_CLK_DISABLE();
-//	__HAL_RCC_USB_CLK_DISABLE();
-//	__HAL_PWR_VDDUSB_DISABLE();
-//	LL_VREFBUF_Disable();
-//	HAL_PWR_DisablePVD();
-//	HAL_PWR_DisableBkUpAccess();
-//	HAL_PWREx_DisableVddUSB();
-//	LL_RCC_LSI1_Disable();
-//	LL_RCC_LSI2_Disable();
-//	LL_RCC_LSE_DisableCSS();
-//	LL_RCC_LSE_Disable();
-//	PWR->CR1 &= ~(PWR_CR1_LPR);
-//	LL_PWR_SetBORConfig(LL_PWR_BOR_SMPS_FORCE_BYPASS);
-//	LL_PWR_SMPS_SetMode(LL_PWR_SMPS_BYPASS);
-
+	HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
     // Stop SYSTICK Timer
     HAL_SuspendTick();
 
@@ -1171,13 +1193,13 @@ void EnterStopMode( void)
     printf("Waked up from stop 2 \n");
 
 #ifdef LPOWER_TEST
-    LL_C2_PWR_SetPowerMode(LL_PWR_MODE_SHUTDOWN);
+	  LL_C2_PWR_SetPowerMode(LL_PWR_MODE_SHUTDOWN);
     /* Configure all GPIO port pins in Analog Input mode (floating input trigger OFF) */
       /* Note: Debug using ST-Link is not possible during the execution of this   */
       /*       example because communication between ST-link and the device       */
       /*       under test is done through UART. All GPIO pins are disabled (set   */
       /*       to analog input mode) including  UART I/O pins.           */
-    	  GPIO_InitTypeDef GPIO_InitStructure;
+      GPIO_InitTypeDef GPIO_InitStructure;
       GPIO_InitStructure.Pin = GPIO_PIN_All;
       GPIO_InitStructure.Mode = GPIO_MODE_ANALOG;
       GPIO_InitStructure.Pull = GPIO_NOPULL;
@@ -1312,7 +1334,6 @@ HAL_StatusTypeDef I2C_Transferring(tI2CPackage *I2CPackage_T)
 	return result;
 }
 
-
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
 	 if(LL_ADC_IsActiveFlag_EOS(ADC1) != 0) /* EOS event */
@@ -1353,6 +1374,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		case WK_ACL_Pin: //ACL wake up handler
 			g_acl_interrupt = true;
 			ACL_ReadSource();
+			ACL_EnableInterrupt();
 			break;
 
 		case SW_DIS_Pin:
@@ -1402,4 +1424,3 @@ void assert_failed(uint8_t *file, uint32_t line)
 #endif /* USE_FULL_ASSERT */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
-
