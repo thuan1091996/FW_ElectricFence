@@ -105,6 +105,7 @@ typedef struct {
 #define LORA_TEST			USED
 #define CHANGE_DEVEUI		USED
 #define TEST_DOWNLINK		NOT_USED
+#define	TEST_SLEEPING		USED
 ///////////////////////////////////////////////////////////////////////////////
 #if DEBUG_UART
 #ifdef __GNUC__
@@ -221,7 +222,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_GPIO_TogglePin(D1_GPIO_Port, D1_Pin);
   HAL_Delay(500);
-  HAL_GPIO_TogglePin(D1_GPIO_Port, D1_Pin);
   Sys_Test();
 //  FW_Test1();
 
@@ -688,7 +688,9 @@ eTestStatus ACL_FWTest(void)
 		break;
 		#endif /* ENDLESS_LOOP_ACL */
 	}
-//	ACL_Standby();
+	#if TEST_SLEEPING
+	ACL_Standby();	/* Prevent wake up from ACL */
+	#endif /*End of TEST_SLEEPING*/
 	#endif /*End of ACL_Test*/
 	return ACL_test;
 }
@@ -1162,14 +1164,86 @@ void DebugProbeInit(void)
 
 void EnterStopMode( void)
 {
-
+	uint32_t DeInitpinsPortA=GPIO_PIN_All;
+	uint32_t DeInitpinsPortB=GPIO_PIN_All;
 	printf("Entering stop 2 mode...\n");
-    /* Button interrupt */
-    GPIO_InitTypeDef GPIOButton_InitStructure;
-    GPIOButton_InitStructure.Pin = SW_DIS_Pin;
-    GPIOButton_InitStructure.Mode = GPIO_MODE_IT_RISING;
-    GPIOButton_InitStructure.Pull = GPIO_NOPULL;
-	HAL_GPIO_Init(SW_DIS_GPIO_Port, &GPIOButton_InitStructure);
+
+	HAL_GPIO_TogglePin(D1_GPIO_Port, D1_Pin);
+	HAL_Delay(500);
+	HAL_GPIO_TogglePin(D1_GPIO_Port, D1_Pin);
+	HAL_Delay(500);
+	HAL_GPIO_TogglePin(D1_GPIO_Port, D1_Pin);
+
+	#if TEST_SLEEPING
+	GPIO_InitTypeDef GPIO_InitStructure;
+
+	GPIO_InitStructure.Mode = GPIO_MODE_ANALOG;
+	GPIO_InitStructure.Pull = GPIO_NOPULL;
+	//Port B
+	DeInitpinsPortB &=~(DISTANCE_EN_Pin);
+	GPIO_InitStructure.Pin = DeInitpinsPortB;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+	//Port A
+	DeInitpinsPortA &= ~(WK_ACL_Pin| EEPROM_EN_Pin| GPS_EN_Pin| EN_BATT_Pin| RAK_EN_Pin);
+	GPIO_InitStructure.Pin = DeInitpinsPortA;
+	HAL_GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+	//Test 1/////////////////////////////////////////////////
+	#if 0
+	// Reusult: 11.8uA
+	LL_C2_PWR_SetPowerMode(LL_PWR_MODE_SHUTDOWN);
+	__HAL_RCC_ADC_CLK_DISABLE();
+	__HAL_RCC_C2USB_CLK_DISABLE();
+	__HAL_RCC_USB_CLK_DISABLE();
+	__HAL_PWR_VDDUSB_DISABLE();
+	LL_VREFBUF_Disable();
+	HAL_PWR_DisablePVD();
+	HAL_PWR_DisableBkUpAccess();
+	HAL_PWREx_DisableVddUSB();
+	LL_RCC_LSI1_Disable();
+	LL_RCC_LSI2_Disable();
+	LL_RCC_LSE_DisableCSS();
+	LL_RCC_LSE_Disable();
+	PWR->CR1 &= ~(PWR_CR1_LPR);
+	LL_PWR_SetBORConfig(LL_PWR_BOR_SMPS_FORCE_BYPASS);
+	LL_PWR_SMPS_SetMode(LL_PWR_SMPS_BYPASS);
+	#endif
+	///////////////////////////////////////////////////////////
+
+	//Test 2/////////////////////////////////////////////////
+	#if 0
+	// Reusult: 11.8uA
+	LL_C2_PWR_SetPowerMode(LL_PWR_MODE_SHUTDOWN);
+	__HAL_RCC_ADC_CLK_DISABLE();
+	__HAL_RCC_LPUART1_CLK_DISABLE();
+
+	LL_VREFBUF_Disable();
+
+	HAL_PWR_DisableBkUpAccess();
+	HAL_PWR_DisablePVD();
+
+
+	#if !NEW
+	__HAL_RCC_LCD_CLK_DISABLE();
+	__HAL_RCC_LPTIM1_CLK_DISABLE();
+	__HAL_RCC_I2C3_CLK_DISABLE();
+
+	#endif /*End of var*/
+	#endif
+	///////////////////////////////////////////////////////////
+
+	//Test 3/////////////////////////////////////////////////
+	// Result: 11.8uA
+	LL_C2_PWR_SetPowerMode(LL_PWR_MODE_SHUTDOWN);
+	__HAL_RCC_ADC_CLK_DISABLE();
+	__HAL_RCC_LPUART1_CLK_DISABLE();
+
+	LL_VREFBUF_Disable();
+	HAL_PWR_DisablePVD();
+	///////////////////////////////////////////////////////////
+
+	#endif /*End of TEST_SLEEPING*/
 
 	// Module control pins -> low output
 	HAL_GPIO_WritePin(EN_BATT_GPIO_Port, EN_BATT_Pin, GPIO_PIN_RESET);   /* Turn off Batt */
@@ -1177,8 +1251,7 @@ void EnterStopMode( void)
 	HAL_GPIO_WritePin(DISTANCE_EN_GPIO_Port, DISTANCE_EN_Pin, GPIO_PIN_RESET);	/* Turn off Distance */
 	HAL_GPIO_WritePin(RAK_EN_GPIO_Port, RAK_EN_Pin, GPIO_PIN_RESET);	/* Turn off RAk4200 */
 	HAL_GPIO_WritePin(GPS_EN_GPIO_Port, GPS_EN_Pin, GPIO_PIN_RESET);	/* Turn off GPS */
-	HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
-	HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
     // Stop SYSTICK Timer
     HAL_SuspendTick();
 
@@ -1192,125 +1265,6 @@ void EnterStopMode( void)
     HAL_ResumeTick();
     printf("Waked up from stop 2 \n");
 
-#ifdef LPOWER_TEST
-	  LL_C2_PWR_SetPowerMode(LL_PWR_MODE_SHUTDOWN);
-    /* Configure all GPIO port pins in Analog Input mode (floating input trigger OFF) */
-      /* Note: Debug using ST-Link is not possible during the execution of this   */
-      /*       example because communication between ST-link and the device       */
-      /*       under test is done through UART. All GPIO pins are disabled (set   */
-      /*       to analog input mode) including  UART I/O pins.           */
-      GPIO_InitTypeDef GPIO_InitStructure;
-      GPIO_InitStructure.Pin = GPIO_PIN_All;
-      GPIO_InitStructure.Mode = GPIO_MODE_ANALOG;
-      GPIO_InitStructure.Pull = GPIO_NOPULL;
-
-      HAL_GPIO_Init(GPIOA, &GPIO_InitStructure);
-      HAL_GPIO_Init(GPIOB, &GPIO_InitStructure);
-      HAL_GPIO_Init(GPIOC, &GPIO_InitStructure);
-      HAL_GPIO_Init(GPIOE, &GPIO_InitStructure);
-      HAL_GPIO_Init(GPIOH, &GPIO_InitStructure);
-
-      /* Disable GPIOs clock */
-      __HAL_RCC_GPIOA_CLK_DISABLE();
-      __HAL_RCC_GPIOB_CLK_DISABLE();
-      __HAL_RCC_GPIOC_CLK_DISABLE();
-      __HAL_RCC_GPIOE_CLK_DISABLE();
-      __HAL_RCC_GPIOH_CLK_DISABLE();
-
-      /* In case of debugger probe attached, work-around of issue specified in "ES0394 - STM32WB55Cx/Rx/Vx device errata":
-        2.2.9 Incomplete Stop 2 mode entry after a wakeup from debug upon EXTI line 48 event
-          "With the JTAG debugger enabled on GPIO pins and after a wakeup from debug triggered by an event on EXTI
-          line 48 (CDBGPWRUPREQ), the device may enter in a state in which attempts to enter Stop 2 mode are not fully
-          effective ..."
-      */
-  //    LL_EXTI_DisableIT_32_63(LL_EXTI_LINE_48);
-  //    LL_C2_EXTI_DisableIT_32_63(LL_EXTI_LINE_48);
-
-      /* Disable all used wakeup source */
-  //    HAL_RTCEx_DeactivateWakeUpTimer(&hrtc);
-
-
-      /* Re-enable wakeup source */
-      /* ## Setting the Wake up time ############################################*/
-      /* RTC Wakeup Interrupt Generation:
-        the wake-up counter is set to its maximum value to yield the longuest
-        stop time to let the current reach its lowest operating point.
-        The maximum value is 0xFFFF, corresponding to about 33 sec. when
-        RTC_WAKEUPCLOCK_RTCCLK_DIV = RTCCLK_Div16 = 16
-
-        Wakeup Time Base = (RTC_WAKEUPCLOCK_RTCCLK_DIV /(LSI))
-        Wakeup Time = Wakeup Time Base * WakeUpCounter
-          = (RTC_WAKEUPCLOCK_RTCCLK_DIV /(LSI)) * WakeUpCounter
-          ==> WakeUpCounter = Wakeup Time / Wakeup Time Base
-
-        To configure the wake up timer to maximum value, the WakeUpCounter is set to 0xFFFF:
-        Wakeup Time Base = 16 /(~32.000KHz) = ~0.5 ms
-        Wakeup Time = 0.5 ms  * WakeUpCounter
-        Therefore, with wake-up counter =  0xFFFF  = 65,535
-           Wakeup Time =  0,5 ms *  65,535 = 32,7675 s ~ 33 sec. */
-  //      HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, 0x0FFFF, RTC_WAKEUPCLOCK_RTCCLK_DIV16);
-
-        /* Enter STOP 2 mode */
-        HAL_PWREx_EnterSTOP2Mode(PWR_STOPENTRY_WFI);
-        //////////////////////////////////////////////////////////////////////////////
-          /* Set Stop mode 2 */
-  //      	PWR->CR1 &= ~(PWR_CR1_LPR);
-  //        MODIFY_REG(PWR->CR1, PWR_CR1_LPMS, PWR_LOWPOWERMODE_STOP2);
-  ////        PWR->CR1 &= ~(PWR_CR1_LPR);
-  //
-  //        /* Set SLEEPDEEP bit of Cortex System Control Register */
-  //        SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
-  //
-  //          __WFI();
-  //
-  //        /* Reset SLEEPDEEP bit of Cortex System Control Register */
-  //        CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
-        //////////////////////////////////////////////////////////////////////////////
-        //Try 2:
-  //      PWR->CR1 = 0x302;
-  //      PWR->CR5 = 0x4279;
-  //      /* Set SLEEPDEEP bit of Cortex System Control Register */
-  //      SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
-  //
-  //        __WFI();
-  //
-  //      /* Reset SLEEPDEEP bit of Cortex System Control Register */
-  //      CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
-        //////////////////////////////////////////////////////////////////////////////
-        //Try 3: Turn off LSI
-  //      LL_RCC_LSI1_Disable();
-  //      LL_RCC_LSI2_Disable();
-  //      PWR->CR1 = 0x302;
-  //      PWR->CR5 = 0x4279;
-  //      /* Set SLEEPDEEP bit of Cortex System Control Register */
-  //      SET_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
-  //
-  //        __WFI();
-  //
-  //      /* Reset SLEEPDEEP bit of Cortex System Control Register */
-  //      CLEAR_BIT(SCB->SCR, ((uint32_t)SCB_SCR_SLEEPDEEP_Msk));
-        //////////////////////////////////////////////////////////////////////////////
-        //Try 4:
-  //    __HAL_RCC_ADC_CLK_DISABLE();
-  //    __HAL_RCC_C2USB_CLK_DISABLE();
-  //    __HAL_RCC_USB_CLK_DISABLE();
-  //    __HAL_PWR_VDDUSB_DISABLE();
-  //    LL_VREFBUF_Disable();
-  //    HAL_PWR_DisablePVD();
-  //    HAL_PWR_DisableBkUpAccess();
-  //    HAL_PWREx_DisableVddUSB();
-  //    LL_RCC_LSI1_Disable();
-  //    LL_RCC_LSI2_Disable();
-  //    LL_RCC_LSE_DisableCSS();
-  //    LL_RCC_LSE_Disable();
-  //    PWR->CR1 &= ~(PWR_CR1_LPR);
-  //
-  //    LL_PWR_SetBORConfig(LL_PWR_BOR_SMPS_FORCE_BYPASS);
-  //    LL_PWR_SMPS_SetMode(LL_PWR_SMPS_BYPASS);
-  //    HAL_PWREx_EnterSTOP2Mode(PWR_STOPENTRY_WFI);
-#else
-
-#endif /*End of LPOWER_TEST*/
 }
 
 HAL_StatusTypeDef I2C_Transferring(tI2CPackage *I2CPackage_T)
