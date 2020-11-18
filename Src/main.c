@@ -93,7 +93,7 @@ typedef struct {
 #define NOT_USED			0
 #define ENDLESS_LOOP_ACL	NOT_USED
 #define ENDLESS_LOOP_DYP	NOT_USED
-#define ENDLESS_BATT_MEASURING	NOT_USED
+#define ENDLESS_BATT_MEASURING	USED
 #define DEBUG_UART			USED
 #define DEBUG_AT_UART		NOT_USED
 #define FW_TEST				USED
@@ -102,10 +102,11 @@ typedef struct {
 #define	DISTANCE_TEST		USED
 #define GPS_TEST			USED
 #define ADC_TEST			USED
-#define LORA_TEST			USED
+#define LORA_TEST			NOT_USED
 #define CHANGE_DEVEUI		USED
 #define TEST_DOWNLINK		NOT_USED
 #define	TEST_SLEEPING		USED
+#define TEST_ITMDBG			USED
 ///////////////////////////////////////////////////////////////////////////////
 #if DEBUG_UART
 #ifdef __GNUC__
@@ -697,6 +698,7 @@ eTestStatus ACL_FWTest(void)
 
 /**************************************************************************************/
 /* DYP Distance sensor FW TEST - Read data */
+#warning "Change DISTANCE_IRQ_SOURCE according to assigning pin"
 #define DISTANCE_IRQ_SOURCE		EXTI3_IRQn
 #define MAX_RANGE 				400 //cm
 #define MAX_TIME_COUNT			(uint16_t)(MAX_RANGE*57.5)
@@ -1105,7 +1107,7 @@ eTestStatus ADC_FWTest(void)
 	ADC_test = RET_FAIL;
 	#ifdef ADC_TEST
 	HAL_GPIO_WritePin(EN_BATT_GPIO_Port, EN_BATT_Pin, GPIO_PIN_SET);
-	HAL_Delay(100);			/* Wait for stable */
+	HAL_Delay(500);			/* Wait for stable */
 	while(1)
 	{
 	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
@@ -1161,6 +1163,15 @@ void DebugProbeInit(void)
 	HAL_GPIO_Init(PROBE_PORT, &GPIOA_InitStructure);
 	HAL_GPIO_WritePin(PROBE_PORT, PROBE1 | PROBE2, GPIO_PIN_RESET);
 }
+
+#if !TEST_ITMDBG
+int _write(int file, char *ptr, int len) {
+  /* Implement your write code here, this is used by puts and printf for example */
+  for (int i = 0; i < len; i++)
+    ITM_SendChar((*ptr++));
+  return len;
+}
+#endif /*End of TEST_ITMDBG*/
 
 void EnterStopMode( void)
 {
