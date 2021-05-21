@@ -1,22 +1,14 @@
 /* USER CODE BEGIN Header */
-/**
-  ******************************************************************************
-  * @file           : main.h
-  * @brief          : Header for main.c file.
-  *                   This file contains the common defines of the application.
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under Ultimate Liberty license
-  * SLA0044, the "License"; You may not use this file except in compliance with
-  * the License. You may obtain a copy of the License at:
-  *                             www.st.com/SLA0044
-  *
-  ******************************************************************************
-  */
+/****************************************************************************
+* Title                 :   DFM - Electrical fence firmware test
+* ProductLink           :   https://docs.google.com/spreadsheets/d/163NVGYAAz6Q9rcFRIo8FAkWSXMXqbl9w7QIAKOVKirg/edit#gid=984419045
+* Filename              :   main.h
+* Author                :   ItachiThuan
+* Origin Date           :   May 21, 2021
+* Version               :   1.0.0
+* Target                :   STM32WB55 with STM32CubeIDE
+* Notes                 :
+*****************************************************************************/
 /* USER CODE END Header */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
@@ -27,38 +19,18 @@
 extern "C" {
 #endif
 
-/* Includes ------------------------------------------------------------------*/
+/******************************************************************************
+* Preprocessor
+*******************************************************************************/
 #include "stm32wbxx_hal.h"
 #include "app_conf.h"
-
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
 #include "stdbool.h"
-/* USER CODE END Includes */
 
-/* Exported types ------------------------------------------------------------*/
-/* USER CODE BEGIN ET */
 
-/* USER CODE END ET */
-
-/* Exported constants --------------------------------------------------------*/
-/* USER CODE BEGIN EC */
-
-/* USER CODE END EC */
-
-/* Exported macro ------------------------------------------------------------*/
-/* USER CODE BEGIN EM */
-
-/* USER CODE END EM */
-
-/* Exported functions prototypes ---------------------------------------------*/
-void Error_Handler(void);
-
-/* USER CODE BEGIN EFP */
-void UART_GetDataDMA(uint8_t* pui8buffer);
-/* USER CODE END EFP */
-
-/* Private defines -----------------------------------------------------------*/
+/******************************************************************************
+* Configuration Constants
+*******************************************************************************/
+/* USER CODE BEGIN Private defines */
 #define RX_DMABUF_LEN 100
 #define RX_BUF_LEN 100
 #define WK_ACL_Pin GPIO_PIN_0
@@ -90,11 +62,23 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define TRIGGER_CABLE_GPIO_Port GPIOB
 #define SHUTD_Pin GPIO_PIN_5
 #define SHUTD_GPIO_Port GPIOB
-/* USER CODE BEGIN Private defines */
 #define PROBE1				GPIO_PIN_11
 #define PROBE2				GPIO_PIN_12
 #define PROBE_PORT			GPIOA
 /* USER CODE END Private defines */
+
+
+/******************************************************************************
+* Macro
+*******************************************************************************/
+
+/******************************************************************************
+* Function Prototypes
+*******************************************************************************/
+/* USER CODE BEGIN EFP */
+void UART_GetDataDMA(uint8_t* pui8buffer);
+void Error_Handler(void);
+/* USER CODE END EFP */
 
 #ifdef __cplusplus
 }

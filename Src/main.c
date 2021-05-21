@@ -1,23 +1,21 @@
 /* USER CODE BEGIN Header */
-/**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under Ultimate Liberty license
-  * SLA0044, the "License"; You may not use this file except in compliance with
-  * the License. You may obtain a copy of the License at:
-  *                             www.st.com/SLA0044
-  *
-  ******************************************************************************
-  */
+/****************************************************************************
+* Title                 :   DFM - Electrical fence firmware test
+* ProductLink           :	https://docs.google.com/spreadsheets/d/163NVGYAAz6Q9rcFRIo8FAkWSXMXqbl9w7QIAKOVKirg/edit#gid=984419045
+* Filename              :	main.c
+* Author                :   ItachiThuan
+* Origin Date           :	May 21, 2021
+* Version               :   1.0.0
+* Target                :   STM32WB55 with STM32CubeIDE
+* Notes                 :
+*****************************************************************************/
 /* USER CODE END Header */
-/* Includes ------------------------------------------------------------------*/
+
+
+/******************************************************************************
+* Includes
+*******************************************************************************/
+/* USER CODE BEGIN Includes */
 #include "main.h"
 #include "adc.h"
 #include "dma.h"
@@ -29,19 +27,17 @@
 #include "app_common.h"
 #include "tim.h"
 #include "gpio.h"
-
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
 #include "stm32_seq.h"
 #include "string.h"
 #include "stdbool.h"
 #include "AT0x.h"
 #include "MMA865x.h"
 #include "L80.h"
-
 /* USER CODE END Includes */
 
-/* Private typedef -----------------------------------------------------------*/
+/******************************************************************************
+* Module Typedefs
+*******************************************************************************/
 /* USER CODE BEGIN PTD */
 
 /* Test result */
@@ -51,7 +47,8 @@ typedef enum eTestStatus
 	RET_OK,
 	RET_TIMEOUT
 }eTestStatus;
-eTestStatus SYS_test, EEPROM_test, ACL_test, DISTANCE_test, LORA_test, GPS_test, ADC_test, BLE_test, BUTTON_test;
+eTestStatus SYS_test, EEPROM_test, ACL_test, DISTANCE_test, LORA_test,
+			GPS_test, ADC_test, BLE_test, BUTTON_test;
 
 /* I2C Transfer */
 typedef enum {
@@ -84,30 +81,39 @@ typedef struct {
 	uint8_t *Data_U8P;
 	uint16_t Length_U16;
 }tFlashData;
-
 /* USER CODE END PTD */
 
-/* Private define ------------------------------------------------------------*/
+/******************************************************************************
+* Module define
+*******************************************************************************/
 /* USER CODE BEGIN PD */
-#define USED				1
-#define NOT_USED			0
-#define ENDLESS_LOOP_ACL	NOT_USED
-#define ENDLESS_LOOP_DYP	NOT_USED
-#define ENDLESS_BATT_MEASURING	USED
-#define DEBUG_UART			USED
-#define DEBUG_AT_UART		NOT_USED
-#define FW_TEST				USED
-#define EEPROM_TEST 		USED
-#define	ACL_TEST			USED
-#define	DISTANCE_TEST		USED
-#define GPS_TEST			USED
-#define ADC_TEST			USED
-#define LORA_TEST			NOT_USED
-#define CHANGE_DEVEUI		USED
-#define TEST_DOWNLINK		NOT_USED
-#define	TEST_SLEEPING		USED
-#define TEST_ITMDBG			USED
-///////////////////////////////////////////////////////////////////////////////
+#define USED								1
+#define NOT_USED							0
+
+#define ENDLESS_LOOP_ACL					NOT_USED
+#define ENDLESS_LOOP_DYP					NOT_USED
+#define ENDLESS_BATT_MEASURING				NOT_USED
+#define DEBUG_UART							USED
+#define DEBUG_AT_UART						NOT_USED
+
+#define FW_TEST								USED
+#define EEPROM_TEST 						USED
+#define	ACL_TEST							USED
+#define	DISTANCE_TEST						USED
+#define GPS_TEST							USED
+#define ADC_TEST							USED
+#define LORA_TEST							NOT_USED
+#define CHANGE_DEVEUI						USED
+#define TEST_DOWNLINK						NOT_USED
+#define	DISABLE_ACL_IRQ						NOT_USED
+#define TEST_ITMDBG							USED
+/* USER CODE END PD */
+
+
+/******************************************************************************
+* Macros
+*******************************************************************************/
+/* USER CODE BEGIN PM */
 #if DEBUG_UART
 #ifdef __GNUC__
   /* With GCC/RAISONANCE, small printf (option LD Linker->Libraries->Small printf
@@ -130,16 +136,12 @@ PUTCHAR_PROTOTYPE
     return ch;
 }
 #endif
-///////////////////////////////////////////////////////////////////////////////
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-
 /* USER CODE END PM */
 
-/* Private variables ---------------------------------------------------------*/
 
+/******************************************************************************
+* Module Variable Definitions
+*******************************************************************************/
 /* USER CODE BEGIN PV */
 volatile bool g_acl_interrupt=false;
 volatile bool g_rak4200_newdata=false;
@@ -151,14 +153,13 @@ RTC_TimeTypeDef eventTime = {0};
 RTC_DateTypeDef eventDate = {0};
 /* USER CODE END PV */
 
-/* Private function prototypes -----------------------------------------------*/
-void SystemClock_Config(void);
+/******************************************************************************
+* Function Prototypes
+*******************************************************************************/
 /* USER CODE BEGIN PFP */
-
+void SystemClock_Config(void);
 void MCU_Init(void);
-
 #if FW_TEST
-
 //System testing function
 eTestStatus Sys_Test(void);
 eTestStatus FW_Test1(void);
@@ -167,23 +168,20 @@ HAL_StatusTypeDef __attribute__((weak)) I2C_Transferring(tI2CPackage *I2CPackage
 //Function for testing devices
 eTestStatus EEPROM_FWTest(void);
 eTestStatus ACL_FWTest(void);
-eTestStatus DISTANCE_FWTest(void);
 eTestStatus LORA_FWTest(void);
 eTestStatus GPS_FWTest(void);
 eTestStatus ADC_FWTest(void);
 eTestStatus BLE_FWTest(void);
-
 void ButtonsHandler(void);
 void EnterStopMode(void);
 void DebugProbeInit(void);
 #endif /*End of FW_TEST*/
 /* USER CODE END PFP */
 
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
 
-/* USER CODE END 0 */
-
+/******************************************************************************
+* Function Definitions
+*******************************************************************************/
 /**
   * @brief  The application entry point.
   * @retval int
@@ -200,7 +198,6 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -327,9 +324,6 @@ eTestStatus Sys_Test(void)
 	printf("Testing EEPROM ...\n");
 	if(EEPROM_FWTest() == RET_OK )	printf("FW Test EEPROM: OK \n");
 	else							printf("FW Test EEPROM: Not OK \n");
-	printf("Testing Distance sensor ...\n");
-	if(DISTANCE_FWTest() == RET_OK) printf("FW Test Distance: OK \n");
-	else							printf("FW Test Distance: Not OK \n");
 	printf("Testing LoRa ...\n");
 	if(LORA_FWTest() == RET_OK)	 	printf("FW Test LoRa: OK \n");
 	else							printf("FW Test LoRa: Not OK \n");
@@ -689,87 +683,13 @@ eTestStatus ACL_FWTest(void)
 		break;
 		#endif /* ENDLESS_LOOP_ACL */
 	}
-	#if TEST_SLEEPING
+	#if DISABLE_ACL_IRQ
 	ACL_Standby();	/* Prevent wake up from ACL */
-	#endif /*End of TEST_SLEEPING*/
+	#endif /*End of DISABLE_ACL_IRQ*/
 	#endif /*End of ACL_Test*/
 	return ACL_test;
 }
 
-/**************************************************************************************/
-/* DYP Distance sensor FW TEST - Read data */
-#warning "Change DISTANCE_IRQ_SOURCE according to assigning pin"
-#define DISTANCE_IRQ_SOURCE		EXTI3_IRQn
-#define MAX_RANGE 				400 //cm
-#define MAX_TIME_COUNT			(uint16_t)(MAX_RANGE*57.5)
-
-volatile bool g_new_distancedata = false;
-uint16_t g_time_ivt=0;
-float g_distance=0.0;
-float g_avgdistance=0.00;
-
-static void Trigger_DistanceRX(void)
-{
-	HAL_GPIO_WritePin(TRIGGER_CABLE_GPIO_Port, TRIGGER_CABLE_Pin, GPIO_PIN_RESET);
-	HAL_Delay(5);
-	HAL_GPIO_WritePin(TRIGGER_CABLE_GPIO_Port, TRIGGER_CABLE_Pin, GPIO_PIN_SET);
-}
-
-static bool DISTANCE_GetData(float *distance_fl)
-{
-	bool retval = false;
-	HAL_GPIO_WritePin(DISTANCE_EN_GPIO_Port, DISTANCE_EN_Pin, GPIO_PIN_SET);
-	HAL_NVIC_EnableIRQ(DISTANCE_IRQ_SOURCE); 		//Enable GPIO interrupt of TX pin
-	Trigger_DistanceRX();
-	HAL_Delay(100);									//wait for new data
-	if(g_new_distancedata == true)					//Falling edge detected
-	{
-	  if(g_time_ivt <= MAX_TIME_COUNT)				//Filter wrong timer value base on data sheet
-	  {
-		  *distance_fl =(float)((double)g_time_ivt / 57.5);
-		  retval = true;
-	  }
-	  g_new_distancedata = false;
-	  HAL_Delay(400); 								//sensor much read each 200ms interval (datasheet)
-	}
-	HAL_NVIC_DisableIRQ(DISTANCE_IRQ_SOURCE);		//Disable GPIO interrupt of TX pin
-	return retval;
-}
-
-eTestStatus DISTANCE_FWTest(void)
-{
-	uint16_t ui16distance=0;
-	DISTANCE_test = RET_FAIL;
-	HAL_GPIO_WritePin(DISTANCE_EN_GPIO_Port, DISTANCE_EN_Pin, GPIO_PIN_SET);
-	HAL_Delay(500);
-	#if DISTANCE_TEST
-	#if ENDLESS_LOOP_DYP
-	while(true)
-	{
-		if (DISTANCE_GetData(&g_distance) == true)
-		{
-			DISTANCE_test = RET_OK;
-			ui16distance = (uint16_t) g_distance;					//casting for quick debug
-			printf("Distance to obstacle: %d \n",ui16distance);
-		}
-	}
-	#else
-	for (int count = 0; count < 10; ++count)						//max test time = 1s
-	{
-		if (DISTANCE_GetData(&g_distance) == true)
-		{
-			printf("Detected obstacles.. ");
-			ui16distance = (uint16_t) g_distance;					//casting for quick debug
-			printf("distance to obstacle: %d \n",ui16distance);
-			DISTANCE_test = RET_OK;
-			break;
-		}
-		else;
-	}
-	#endif /*End of ENDLESS_LOOP_DYP */
-	#endif /*End of DISTANCE_TEST */
-	return DISTANCE_test;
-}
 /**************************************************************************************/
 /* RAK4200 LPUART FW Test - Send/Receive & Get DEVEUI */
 
@@ -1185,76 +1105,9 @@ void EnterStopMode( void)
 	HAL_Delay(500);
 	HAL_GPIO_TogglePin(D1_GPIO_Port, D1_Pin);
 
-	#if TEST_SLEEPING
-	GPIO_InitTypeDef GPIO_InitStructure;
-
-	GPIO_InitStructure.Mode = GPIO_MODE_ANALOG;
-	GPIO_InitStructure.Pull = GPIO_NOPULL;
-	//Port B
-	DeInitpinsPortB &=~(DISTANCE_EN_Pin);
-	GPIO_InitStructure.Pin = DeInitpinsPortB;
-	HAL_GPIO_Init(GPIOB, &GPIO_InitStructure);
-
-	//Port A
-	DeInitpinsPortA &= ~(WK_ACL_Pin| EEPROM_EN_Pin| GPS_EN_Pin| EN_BATT_Pin| RAK_EN_Pin);
-	GPIO_InitStructure.Pin = DeInitpinsPortA;
-	HAL_GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-	//Test 1/////////////////////////////////////////////////
-	#if 0
-	// Reusult: 11.8uA
-	LL_C2_PWR_SetPowerMode(LL_PWR_MODE_SHUTDOWN);
-	__HAL_RCC_ADC_CLK_DISABLE();
-	__HAL_RCC_C2USB_CLK_DISABLE();
-	__HAL_RCC_USB_CLK_DISABLE();
-	__HAL_PWR_VDDUSB_DISABLE();
-	LL_VREFBUF_Disable();
-	HAL_PWR_DisablePVD();
-	HAL_PWR_DisableBkUpAccess();
-	HAL_PWREx_DisableVddUSB();
-	LL_RCC_LSI1_Disable();
-	LL_RCC_LSI2_Disable();
-	LL_RCC_LSE_DisableCSS();
-	LL_RCC_LSE_Disable();
-	PWR->CR1 &= ~(PWR_CR1_LPR);
-	LL_PWR_SetBORConfig(LL_PWR_BOR_SMPS_FORCE_BYPASS);
-	LL_PWR_SMPS_SetMode(LL_PWR_SMPS_BYPASS);
-	#endif
-	///////////////////////////////////////////////////////////
-
-	//Test 2/////////////////////////////////////////////////
-	#if 0
-	// Reusult: 11.8uA
 	LL_C2_PWR_SetPowerMode(LL_PWR_MODE_SHUTDOWN);
 	__HAL_RCC_ADC_CLK_DISABLE();
 	__HAL_RCC_LPUART1_CLK_DISABLE();
-
-	LL_VREFBUF_Disable();
-
-	HAL_PWR_DisableBkUpAccess();
-	HAL_PWR_DisablePVD();
-
-
-	#if !NEW
-	__HAL_RCC_LCD_CLK_DISABLE();
-	__HAL_RCC_LPTIM1_CLK_DISABLE();
-	__HAL_RCC_I2C3_CLK_DISABLE();
-
-	#endif /*End of var*/
-	#endif
-	///////////////////////////////////////////////////////////
-
-	//Test 3/////////////////////////////////////////////////
-	// Result: 11.8uA
-	LL_C2_PWR_SetPowerMode(LL_PWR_MODE_SHUTDOWN);
-	__HAL_RCC_ADC_CLK_DISABLE();
-	__HAL_RCC_LPUART1_CLK_DISABLE();
-
-	LL_VREFBUF_Disable();
-	HAL_PWR_DisablePVD();
-	///////////////////////////////////////////////////////////
-
-	#endif /*End of TEST_SLEEPING*/
 
 	// Module control pins -> low output
 	HAL_GPIO_WritePin(EN_BATT_GPIO_Port, EN_BATT_Pin, GPIO_PIN_RESET);   /* Turn off Batt */
@@ -1314,28 +1167,8 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	static bool rising_dectected= false;
 	switch (GPIO_Pin)
 	{
-		case PWM_CABLE_Pin:
-			if(HAL_GPIO_ReadPin(PWM_CABLE_GPIO_Port, PWM_CABLE_Pin) == GPIO_PIN_SET)		//Rising edge
-			{
-				__HAL_TIM_SET_COUNTER(&htim16, 0); //Reset timer value
-				HAL_TIM_Base_Start(&htim16);
-				rising_dectected = true;
-			}
-			else																			//Falling edge
-			{
-				if(rising_dectected == true)
-				{
-					g_time_ivt = __HAL_TIM_GET_COUNTER(&htim16);		//Get time elapse
-					HAL_TIM_Base_Stop(&htim16);							//Stop timer
-					g_new_distancedata = true;
-				}
-				rising_dectected = false;
-			}
-			break;
-
 		case WK_ACL_Pin: //ACL wake up handler
 			g_acl_interrupt = true;
 			ACL_ReadSource();
