@@ -66,7 +66,7 @@ void MX_GPIO_Init(void)
   /*Configure GPIO pins : PAPin PAPin PAPin PAPin
                            PAPin PAPin */
   GPIO_InitStruct.Pin = EEPROM_EN_Pin|GPS_EN_Pin|EN_BATT_Pin|D1_Pin
-                          |D2_Pin|RAK_EN_Pin;
+                          |D2_Pin|RAK_EN_Pin | BUZZER_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -79,7 +79,8 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(SW_DIS_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PBPin PBPin PBPin */
-  GPIO_InitStruct.Pin = DISTANCE_EN_Pin|TRIGGER_CABLE_Pin|SHUTD_Pin;
+  GPIO_InitStruct.Pin = DISTANCE_EN_Pin|TRIGGER_CABLE_Pin|SHUTD_Pin| RELAY_EN_Pin|
+		  	  	  	  	LED_R_Pin| LED_G_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

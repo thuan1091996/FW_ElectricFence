@@ -62,6 +62,20 @@ extern "C" {
 #define TRIGGER_CABLE_GPIO_Port GPIOB
 #define SHUTD_Pin GPIO_PIN_5
 #define SHUTD_GPIO_Port GPIOB
+
+#define RELAY_EN_Pin GPIO_PIN_2
+#define RELAY_EN_Port GPIOB
+
+#define LED_G_Pin GPIO_PIN_1
+#define LED_G_Port GPIOB
+
+#define LED_R_Pin GPIO_PIN_3
+#define LED_R_Port GPIOB
+
+#define BUZZER_Pin GPIO_PIN_10
+#define BUZZER_Port GPIOA
+
+
 #define PROBE1				GPIO_PIN_11
 #define PROBE2				GPIO_PIN_12
 #define PROBE_PORT			GPIOA

@@ -98,19 +98,19 @@ typedef struct {
 #define FW_TEST								USED
 #define EEPROM_TEST 						USED
 #define	ACL_TEST							USED
-#define	DISTANCE_TEST						USED
 #define GPS_TEST							NOT_USED
 #define ADC_TEST							USED
 #define LORA_TEST							NOT_USED
 #define CHANGE_DEVEUI						USED
-#define TEST_DOWNLINK						NOT_USED
-#define	DISABLE_ACL_IRQ						USED
+#define TEST_DOWNLINK						USED
+#define	DISABLE_ACL_IRQ						NOT_USED
 
 #define DEBUG_CONSOLE						USED
-#define DEBUG_UART							NOT_USED
+#define DEBUG_UART
 
 #if DEBUG_CONSOLE
-#if !DEBUG_UART
+#ifndef DEBUG_UART
+	#define DEBUG_ITM						USED
 	int _write(int file, char *ptr, int len)
 	{
 	  /* Implement your write code here, this is used by puts and printf for example */
@@ -140,7 +140,7 @@ typedef struct {
 		return ch;
 	}
 
-#endif  /* End of DEBUG_ITM */
+#endif  /* End of DEBUG_UART */
 #endif  /* End of DEBUG_CONSOLE */
 
 /* USER CODE END PM */
@@ -195,56 +195,76 @@ void DebugProbeInit(void);
   */
 int main(void)
 {
-  /* USER CODE BEGIN 1 */
+	/* USER CODE BEGIN 1 */
 
-  /* USER CODE END 1 */
+	/* USER CODE END 1 */
 
-  /* MCU Configuration--------------------------------------------------------*/
+	/* MCU Configuration--------------------------------------------------------*/
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+	HAL_Init();
 
-  /* USER CODE BEGIN Init */
-  /* USER CODE END Init */
+	/* USER CODE BEGIN Init */
+	/* USER CODE END Init */
 
-  /* Configure the system clock */
-  SystemClock_Config();
+	/* Configure the system clock */
+	SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
+	/* USER CODE BEGIN SysInit */
 
-  /* USER CODE END SysInit */
+	/* USER CODE END SysInit */
 
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_DMA_Init();
-  MX_USART1_UART_Init();
-  MX_RF_Init();
-  MX_RTC_Init();
-  MX_I2C1_Init();
-  MX_LPUART1_UART_Init();
-  MX_TIM16_Init();
-  MX_ADC1_Init();
-  /* USER CODE BEGIN 2 */
-  HAL_GPIO_TogglePin(D1_GPIO_Port, D1_Pin);
-  HAL_Delay(500);
-  Sys_Test();
-//  FW_Test1();
-  g_testingble = true;
-  printf("Testing BLE function (including button test)\n");
-  /* USER CODE END 2 */
+	/* Initialize all configured peripherals */
+	MX_GPIO_Init();
+	MX_DMA_Init();
+	MX_USART1_UART_Init();
+	MX_RF_Init();
+	MX_RTC_Init();
+	MX_I2C1_Init();
+	MX_LPUART1_UART_Init();
+	MX_TIM16_Init();
+	MX_ADC1_Init();
+	/* USER CODE BEGIN 2 */
+	HAL_GPIO_TogglePin(D1_GPIO_Port, D1_Pin);
+	HAL_Delay(500);
+	Sys_Test();
 
-  /* Init code for STM32_WPAN */
-  APPE_Init();
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
-	  UTIL_SEQ_Run(~0);
-  }
-  /* USER CODE END 3 */
+	/************** Electrical fence testing ***************/
+	printf("Electrical fence testing... \n");
+	for (int count = 0; count < 10; ++count)
+	{
+		HAL_GPIO_TogglePin(LED_G_Port, LED_G_Pin);
+		HAL_Delay(100);
+		#if !DEBUG_ITM
+		HAL_GPIO_TogglePin(LED_R_Port, LED_R_Pin);
+		HAL_GPIO_TogglePin(BUZZER_Port, BUZZER_Pin);
+		#endif  /* End of DEBUG_ITM */
+		HAL_Delay(100);
+	}
+
+
+
+
+
+	/*******************************************************/
+
+	g_testingble = true;
+	printf("Testing BLE function (including button test)\n");
+	/* USER CODE END 2 */
+
+	/* Init code for STM32_WPAN */
+	APPE_Init();
+	/* Infinite loop */
+	/* USER CODE BEGIN WHILE */
+	while (1)
+	{
+		/* USER CODE END WHILE */
+
+		/* USER CODE BEGIN 3 */
+		UTIL_SEQ_Run(~0);
+	}
+	/* USER CODE END 3 */
 }
 
 /**
