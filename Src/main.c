@@ -47,7 +47,7 @@ typedef enum eTestStatus
 	RET_OK,
 	RET_TIMEOUT
 }eTestStatus;
-eTestStatus SYS_test, EEPROM_test, ACL_test, DISTANCE_test, LORA_test,
+eTestStatus SYS_test, EEPROM_test, ACL_test, LORA_test,
 			GPS_test, ADC_test, BLE_test, BUTTON_test;
 
 /* I2C Transfer */
@@ -93,49 +93,56 @@ typedef struct {
 #define ENDLESS_LOOP_ACL					NOT_USED
 #define ENDLESS_LOOP_DYP					NOT_USED
 #define ENDLESS_BATT_MEASURING				NOT_USED
-#define DEBUG_UART							USED
 #define DEBUG_AT_UART						NOT_USED
 
 #define FW_TEST								USED
 #define EEPROM_TEST 						USED
 #define	ACL_TEST							USED
 #define	DISTANCE_TEST						USED
-#define GPS_TEST							USED
+#define GPS_TEST							NOT_USED
 #define ADC_TEST							USED
 #define LORA_TEST							NOT_USED
 #define CHANGE_DEVEUI						USED
 #define TEST_DOWNLINK						NOT_USED
-#define	DISABLE_ACL_IRQ						NOT_USED
-#define TEST_ITMDBG							USED
-/* USER CODE END PD */
+#define	DISABLE_ACL_IRQ						USED
 
+#define DEBUG_CONSOLE						USED
+#define DEBUG_UART							NOT_USED
 
-/******************************************************************************
-* Macros
-*******************************************************************************/
-/* USER CODE BEGIN PM */
-#if DEBUG_UART
-#ifdef __GNUC__
-  /* With GCC/RAISONANCE, small printf (option LD Linker->Libraries->Small printf
-     set to 'Yes') calls __io_putchar() */
-  #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
+#if DEBUG_CONSOLE
+#if !DEBUG_UART
+	int _write(int file, char *ptr, int len)
+	{
+	  /* Implement your write code here, this is used by puts and printf for example */
+	  for (int i = 0; i < len; i++)
+		ITM_SendChar((*ptr++));
+	  return len;
+	}
 #else
-  #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
-#endif /* __GNUC__ */
+	#ifdef __GNUC__
+	  /* With GCC/RAISONANCE, small printf (option LD Linker->Libraries->Small printf
+		 set to 'Yes') calls __io_putchar() */
+	  #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
+	#else
+	  #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
+	#endif /* __GNUC__ */
 
-/**
-  * @brief  Retargets the C library printf function to the USART.
-  * @param  None
-  * @retval None
-  */
-PUTCHAR_PROTOTYPE
-{
-    /* Place your implementation of fputc here */
-    /* e.g. write a character to the USART */
-    HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 100);
-    return ch;
-}
-#endif
+	/**
+	  * @brief  Retargets the C library printf function to the USART.
+	  * @param  None
+	  * @retval None
+	  */
+	PUTCHAR_PROTOTYPE
+	{
+		/* Place your implementation of fputc here */
+		/* e.g. write a character to the USART */
+		HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 100);
+		return ch;
+	}
+
+#endif  /* End of DEBUG_ITM */
+#endif  /* End of DEBUG_CONSOLE */
+
 /* USER CODE END PM */
 
 
@@ -222,7 +229,7 @@ int main(void)
   HAL_Delay(500);
   Sys_Test();
 //  FW_Test1();
-
+  g_testingble = true;
   printf("Testing BLE function (including button test)\n");
   /* USER CODE END 2 */
 
@@ -333,7 +340,7 @@ eTestStatus Sys_Test(void)
 	printf("Testing GPS ...\n");
 	if(GPS_FWTest() == RET_OK)		printf("\nFW Test GPS: OK \n");
 	else							printf("FW Test GPS: Not OK \n");
-	SYS_test = 	EEPROM_test & ACL_test & DISTANCE_test & LORA_test & GPS_test & ADC_test;
+	SYS_test = 	EEPROM_test & ACL_test & LORA_test & GPS_test & ADC_test;
 	if(SYS_test == RET_OK)			printf("\nFW Test: OK \n");
 	else							printf("FW Test: Not OK \n");
 	EnterStopMode();
@@ -394,7 +401,7 @@ eTestStatus FW_Test1(void)
 
 /**************************************************************************************/
 /* EEPROM FIRMWARE TEST - Read & Write data */
-#define START_ADDR		0
+#define START_ADDR		900
 
 #define LENGTH			50
 
@@ -526,6 +533,10 @@ eTestStatus EEPROM_FWTest(void)
 	{
 		EEPROM_test = RET_OK;
 	}
+
+	#else
+	printf("----- Skipped test ----- \n");
+
 	#endif /*End of EEPROM_TEST*/
 	return EEPROM_test;
 }
@@ -683,9 +694,13 @@ eTestStatus ACL_FWTest(void)
 		break;
 		#endif /* ENDLESS_LOOP_ACL */
 	}
+
 	#if DISABLE_ACL_IRQ
 	ACL_Standby();	/* Prevent wake up from ACL */
 	#endif /*End of DISABLE_ACL_IRQ*/
+
+	#else
+	printf("----- Skipped test ----- \n");
 	#endif /*End of ACL_Test*/
 	return ACL_test;
 }
@@ -920,6 +935,10 @@ eTestStatus LORA_FWTest(void)
 	#endif /*End of TEST_DMA*/
 	#endif /*End of TEST_SLEEPLORA*/
 	#endif /* End of DEBUG_AT_UART */
+
+	#else
+	printf("----- Skipped test ----- \n");
+
 	#endif /* End of LORA_TEST */
 	return LORA_test;
 }
@@ -990,8 +1009,8 @@ bool GPS_Settings(void)
 			recv_count = gps_dataindex;
 			if (strstr( (const char*)g_gps_datarecv, (const char*)"PMTK001,314") != NULL)
 			{
-				printf("Data recv GPS: \n");
-				HAL_UART_Transmit(&huart1, g_gps_datarecv, recv_count, 100);
+				printf("Data recv GPS:  %s \n", g_gps_datarecv);
+//				HAL_UART_Transmit(&huart1, g_gps_datarecv, recv_count, 100);
 				return true;
 			}
 		}
@@ -1009,6 +1028,8 @@ eTestStatus GPS_FWTest(void)
 	if (GPS_Settings() == true) GPS_test = RET_OK;
 	else						GPS_test = RET_FAIL;
 	HAL_GPIO_WritePin(GPS_EN_GPIO_Port, GPS_EN_Pin, GPIO_PIN_RESET);
+	#else
+	printf("----- Skipped test ----- \n");
 	#endif /*End GPS_TEST*/
 	return GPS_test;
 }
@@ -1044,6 +1065,10 @@ eTestStatus ADC_FWTest(void)
 	break;
 	#endif /*End of ENDLESS_BATT_MEASURING*/
 	}
+
+	#else
+	printf("----- Skipped test ----- \n");
+
 	#endif /*End of ADC_TEST*/
 	return ADC_test;
 }
@@ -1084,14 +1109,6 @@ void DebugProbeInit(void)
 	HAL_GPIO_WritePin(PROBE_PORT, PROBE1 | PROBE2, GPIO_PIN_RESET);
 }
 
-#if !TEST_ITMDBG
-int _write(int file, char *ptr, int len) {
-  /* Implement your write code here, this is used by puts and printf for example */
-  for (int i = 0; i < len; i++)
-    ITM_SendChar((*ptr++));
-  return len;
-}
-#endif /*End of TEST_ITMDBG*/
 
 void EnterStopMode( void)
 {
