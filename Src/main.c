@@ -44,7 +44,7 @@ typedef enum eTestStatus
 	RET_TIMEOUT
 }eTestStatus;
 eTestStatus SYS_test, EEPROM_test, ACL_test, LORA_test,
-GPS_test, ADC_test, BLE_test, BUTTON_test;
+GPS_test, ADC_test, BLE_test, BUTTON_test, ADCElecFence_Test;
 
 /* I2C Transfer */
 typedef enum {
@@ -153,6 +153,8 @@ eTestStatus LORA_FWTest(void);
 eTestStatus GPS_FWTest(void);
 eTestStatus ADC_FWTest(void);
 eTestStatus BLE_FWTest(void);
+
+eTestStatus ADC_ElecFenceTest(void);
 void ButtonsHandler(void);
 void EnterStopMode(void);
 void DebugProbeInit(void);
@@ -200,18 +202,19 @@ int main(void)
 	MX_TIM16_Init();
 	MX_ADC1_Init();
 	/* USER CODE BEGIN 2 */
-#if DEBUG_ITM
+
+	#if DEBUG_ITM
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
 	GPIO_InitStruct.Pin = LED_R_Pin;
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
 	HAL_GPIO_Init(LED_R_GPIO_Port, &GPIO_InitStruct);
-#endif  /* End of DEBUG_ITM */
+	#endif  /* End of DEBUG_ITM */
+
 	HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
 	HAL_Delay(500);
 	Sys_Test();
-
 
 	/************** Electrical fence testing ***************/
 	printf("Electrical fence testing... \n");
@@ -225,9 +228,7 @@ int main(void)
 		HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
 		HAL_Delay(100);
 	}
-
 	/*******************************************************/
-
 	g_testingble = true;
 	printf("Testing BLE function (including button test)\n");
 	/* USER CODE END 2 */
@@ -241,7 +242,13 @@ int main(void)
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
+		#if BLE_TEST
 		UTIL_SEQ_Run(~0);
+		#endif  /* End of BLE_TEST */
+
+		#if ADC_ELECFENCE_TEST
+		ADC_ElecFenceTest();
+		#endif  /* End of ADC_ELECFENCE_TEST */
 	}
 	/* USER CODE END 3 */
 }
@@ -333,9 +340,13 @@ eTestStatus Sys_Test(void)
 	printf("Testing LoRa ...\n");
 	if(LORA_FWTest() == RET_OK)	 	printf("FW Test LoRa: OK \n");
 	else							printf("FW Test LoRa: Not OK \n");
+
+	#if ADC_TEST
 	printf("Testing ADC ...\n");
 	if(ADC_FWTest() == RET_OK)	 	printf("FW Test ADC: OK \n");
 	else							printf("FW Test ADC: Not OK \n");
+	#endif  /* End of ADC_TEST */
+
 	printf("Testing GPS ...\n");
 	if(GPS_FWTest() == RET_OK)		printf("\nFW Test GPS: OK \n");
 	else							printf("FW Test GPS: Not OK \n");
@@ -1034,18 +1045,29 @@ eTestStatus GPS_FWTest(void)
 }
 
 /**************************************************************************************/
-/* ADC FW Test */
-#define BUF_SIZE	2
+/********************************* ADC FW Test ************************************/
+
 uint32_t g_ui32vref=0;
-uint32_t g_ui32input=0;
-uint32_t g_ui32ADCraw[BUF_SIZE]={0};
 uint32_t g_ui32bat=0;
-volatile bool g_newadcdata=false;
-volatile bool g_endseq=false;
+#ifndef FW_ELECFENCE
+#define BUF_SIZE	2	/* VREF | ADC 3.3 */
+
+#else
+#define BUF_SIZE	5	/* VREF | ADC 3.3 | ADC 12V | ADC+ | ADC- */
+uint32_t g_ui32_12v=0;
+uint32_t g_ui32_pos=0;
+uint32_t g_ui32_neg=0;
+#endif  /* End of ifdef FW_ELECFENCE */
+
+uint32_t g_ui32ADCraw[BUF_SIZE]={0};	/* Raw ADC input data */
+uint32_t g_ui32input[BUF_SIZE-1]={0}; 	/* Ignore Vref */
+volatile bool g_newadcdata=false;		/* New ADC data flag */
+
+
 eTestStatus ADC_FWTest(void)
 {
 	ADC_test = RET_FAIL;
-#ifdef ADC_TEST
+	#ifdef ADC_TEST
 	HAL_GPIO_WritePin(EN_BATT_GPIO_Port, EN_BATT_Pin, GPIO_PIN_SET);
 	HAL_Delay(500);			/* Wait for stable */
 	while(1)
@@ -1056,21 +1078,60 @@ eTestStatus ADC_FWTest(void)
 		ADC_test = RET_OK;
 		HAL_ADC_Stop_IT(&hadc1);
 		g_ui32vref = __LL_ADC_CALC_VREFANALOG_VOLTAGE(g_ui32ADCraw[0], ADC_RESOLUTION_12B);
-		g_ui32input= __LL_ADC_CALC_DATA_TO_VOLTAGE(g_ui32vref, g_ui32ADCraw[1], ADC_RESOLUTION_12B);
-		g_ui32bat = 4 * g_ui32input;
+		g_ui32input[0]= __LL_ADC_CALC_DATA_TO_VOLTAGE(g_ui32vref, g_ui32ADCraw[1], ADC_RESOLUTION_12B);
+		g_ui32bat = 4 * g_ui32input[0];
 		printf("Battery voltages: %ld (mV)\n",g_ui32bat);
 		g_newadcdata = false;
-#if !ENDLESS_BATT_MEASURING
+		#if !ENDLESS_BATT_MEASURING
 		break;
-#endif /*End of ENDLESS_BATT_MEASURING*/
+		#endif /*End of ENDLESS_BATT_MEASURING*/
 	}
 
-#else
+	#else
 	printf("----- Skipped test ----- \n");
-
-#endif /*End of ADC_TEST*/
+	#endif /*End of ADC_TEST*/
 	return ADC_test;
 }
+
+
+#if ADC_ELECFENCE_TEST
+/* ADC FW Test */
+
+eTestStatus ADC_ElecFenceTest(void)
+{
+	ADCElecFence_Test = RET_FAIL;
+	#ifdef ADC_ELECFENCE_TEST
+	/* Power on ADC modules */
+	HAL_GPIO_WritePin(EN_BATT_GPIO_Port, EN_BATT_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(RELAY_EN_GPIO_Port, RELAY_EN_Pin, GPIO_PIN_SET);
+	HAL_Delay(500);			/* Wait for stable */
+	/* Start measuring & converting */
+	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+	HAL_ADC_Start_DMA(&hadc1, g_ui32ADCraw, BUF_SIZE);
+	HAL_ADC_Start_IT(&hadc1);
+	while(g_newadcdata == false);
+	ADCElecFence_Test = RET_OK;
+	HAL_ADC_Stop_DMA(&hadc1);
+	g_ui32vref = __LL_ADC_CALC_VREFANALOG_VOLTAGE(g_ui32ADCraw[0], ADC_RESOLUTION_12B);
+	for(uint8_t idx=0; idx < BUF_SIZE-1 ; idx++) /* ignore Vref */
+	{
+		g_ui32input[idx] = __LL_ADC_CALC_DATA_TO_VOLTAGE(g_ui32vref, g_ui32ADCraw[idx+1], ADC_RESOLUTION_12B);
+	}
+	/* Convert to application data */
+	g_ui32bat = g_ui32input[0] * 4;
+	g_ui32_12v = g_ui32input[1] *5;
+	g_ui32_pos = g_ui32input[2];
+	g_ui32_neg = g_ui32input[3];
+	g_newadcdata = false;
+	HAL_ADC_Stop_DMA(&hadc1);
+	HAL_ADC_Stop_IT(&hadc1);
+	#else
+	printf("----- Skipped test ----- \n");
+	#endif /*End of ADC_ELECFENCE_TEST*/
+	return ADCElecFence_Test;
+}
+#endif  /* End of ADC_ELECFENCE_TEST */
+
 
 /**************************************************************************************/
 volatile bool g_buttonpressed=false;
@@ -1120,7 +1181,6 @@ void EnterStopMode( void)
 	HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
 
 	LL_C2_PWR_SetPowerMode(LL_PWR_MODE_SHUTDOWN);
-	__HAL_RCC_ADC_CLK_DISABLE();
 	__HAL_RCC_LPUART1_CLK_DISABLE();
 
 	// Module control pins -> low output
@@ -1166,6 +1226,12 @@ HAL_StatusTypeDef I2C_Transferring(tI2CPackage *I2CPackage_T)
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
+	#ifdef FW_ELECFENCE
+	if(hadc->Instance == ADC1)
+	{
+		g_newadcdata = true;
+	}
+	#else	/* TrashSensor used interrupt instead of DMA */
 	if(LL_ADC_IsActiveFlag_EOS(ADC1) != 0) /* EOS event */
 	{
 		g_ui32ADCraw[1] = HAL_ADC_GetValue(&hadc1);
@@ -1175,6 +1241,9 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 	{
 		g_ui32ADCraw[0] = HAL_ADC_GetValue(&hadc1);
 	}
+	#endif  /* End of ifdef FW_ELECFENCE */
+
+
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)

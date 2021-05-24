@@ -90,6 +90,7 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 /* USER CODE BEGIN Private defines */
 #define USED								1
 #define NOT_USED							0
+#define FW_ELECFENCE
 
 #define ENDLESS_LOOP_ACL					NOT_USED
 #define ENDLESS_LOOP_DYP					NOT_USED
@@ -100,11 +101,20 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define EEPROM_TEST 						USED
 #define	ACL_TEST							USED
 #define GPS_TEST							NOT_USED
+
+#ifdef FW_ELECFENCE
+#define ADC_ELECFENCE_TEST					USED
+#else
 #define ADC_TEST							USED
+#endif  /* End of ifdef FW_ELECFENCE */
+
 #define LORA_TEST							NOT_USED
 #define CHANGE_DEVEUI						USED
+#define BLE_TEST							NOT_USED
+
 #define TEST_DOWNLINK						USED
 #define	DISABLE_ACL_IRQ						NOT_USED
+
 
 #define DEBUG_CONSOLE						USED
 #define DEBUG_UART							NOT_USED
