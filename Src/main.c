@@ -1,21 +1,16 @@
 /* USER CODE BEGIN Header */
 /****************************************************************************
-* Title                 :   DFM - Electrical fence firmware test
-* ProductLink           :	https://docs.google.com/spreadsheets/d/163NVGYAAz6Q9rcFRIo8FAkWSXMXqbl9w7QIAKOVKirg/edit#gid=984419045
-* Filename              :	main.c
-* Author                :   ItachiThuan
-* Origin Date           :	May 21, 2021
-* Version               :   1.0.0
-* Target                :   STM32WB55 with STM32CubeIDE
-* Notes                 :
-*****************************************************************************/
+ * Title                 :   DFM - Electrical fence firmware test
+ * ProductLink           :	https://docs.google.com/spreadsheets/d/163NVGYAAz6Q9rcFRIo8FAkWSXMXqbl9w7QIAKOVKirg/edit#gid=984419045
+ * Filename              :	main.c
+ * Author                :   ItachiThuan
+ * Origin Date           :	May 21, 2021
+ * Version               :   1.0.0
+ * Target                :   STM32WB55 with STM32CubeIDE
+ * Notes                 :
+ *****************************************************************************/
 /* USER CODE END Header */
-
-
-/******************************************************************************
-* Includes
-*******************************************************************************/
-/* USER CODE BEGIN Includes */
+/* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
 #include "dma.h"
@@ -27,6 +22,9 @@
 #include "app_common.h"
 #include "tim.h"
 #include "gpio.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
 #include "stm32_seq.h"
 #include "string.h"
 #include "stdbool.h"
@@ -35,9 +33,7 @@
 #include "L80.h"
 /* USER CODE END Includes */
 
-/******************************************************************************
-* Module Typedefs
-*******************************************************************************/
+/* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
 /* Test result */
@@ -48,7 +44,7 @@ typedef enum eTestStatus
 	RET_TIMEOUT
 }eTestStatus;
 eTestStatus SYS_test, EEPROM_test, ACL_test, LORA_test,
-			GPS_test, ADC_test, BLE_test, BUTTON_test;
+GPS_test, ADC_test, BLE_test, BUTTON_test;
 
 /* I2C Transfer */
 typedef enum {
@@ -83,72 +79,51 @@ typedef struct {
 }tFlashData;
 /* USER CODE END PTD */
 
-/******************************************************************************
-* Module define
-*******************************************************************************/
+/* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define USED								1
-#define NOT_USED							0
 
-#define ENDLESS_LOOP_ACL					NOT_USED
-#define ENDLESS_LOOP_DYP					NOT_USED
-#define ENDLESS_BATT_MEASURING				NOT_USED
-#define DEBUG_AT_UART						NOT_USED
+/* USER CODE END PD */
 
-#define FW_TEST								USED
-#define EEPROM_TEST 						USED
-#define	ACL_TEST							USED
-#define GPS_TEST							NOT_USED
-#define ADC_TEST							USED
-#define LORA_TEST							NOT_USED
-#define CHANGE_DEVEUI						USED
-#define TEST_DOWNLINK						USED
-#define	DISABLE_ACL_IRQ						NOT_USED
-
-#define DEBUG_CONSOLE						USED
-#define DEBUG_UART
-
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
 #if DEBUG_CONSOLE
-#ifndef DEBUG_UART
-	#define DEBUG_ITM						USED
-	int _write(int file, char *ptr, int len)
-	{
-	  /* Implement your write code here, this is used by puts and printf for example */
-	  for (int i = 0; i < len; i++)
+#if	!DEBUG_UART
+#define DEBUG_ITM						USED
+int _write(int file, char *ptr, int len)
+{
+	/* Implement your write code here, this is used by puts and printf for example */
+	for (int i = 0; i < len; i++)
 		ITM_SendChar((*ptr++));
-	  return len;
-	}
+	return len;
+}
 #else
-	#ifdef __GNUC__
-	  /* With GCC/RAISONANCE, small printf (option LD Linker->Libraries->Small printf
+#ifdef __GNUC__
+/* With GCC/RAISONANCE, small printf (option LD Linker->Libraries->Small printf
 		 set to 'Yes') calls __io_putchar() */
-	  #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
-	#else
-	  #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
-	#endif /* __GNUC__ */
+#define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
+#else
+#define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
+#endif /* __GNUC__ */
 
-	/**
-	  * @brief  Retargets the C library printf function to the USART.
-	  * @param  None
-	  * @retval None
-	  */
-	PUTCHAR_PROTOTYPE
-	{
-		/* Place your implementation of fputc here */
-		/* e.g. write a character to the USART */
-		HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 100);
-		return ch;
-	}
+/**
+ * @brief  Retargets the C library printf function to the USART.
+ * @param  None
+ * @retval None
+ */
+PUTCHAR_PROTOTYPE
+{
+	/* Place your implementation of fputc here */
+	/* e.g. write a character to the USART */
+	HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 100);
+	return ch;
+}
 
 #endif  /* End of DEBUG_UART */
 #endif  /* End of DEBUG_CONSOLE */
-
 /* USER CODE END PM */
 
+/* Private variables ---------------------------------------------------------*/
 
-/******************************************************************************
-* Module Variable Definitions
-*******************************************************************************/
 /* USER CODE BEGIN PV */
 volatile bool g_acl_interrupt=false;
 volatile bool g_rak4200_newdata=false;
@@ -160,11 +135,10 @@ RTC_TimeTypeDef eventTime = {0};
 RTC_DateTypeDef eventDate = {0};
 /* USER CODE END PV */
 
-/******************************************************************************
-* Function Prototypes
-*******************************************************************************/
-/* USER CODE BEGIN PFP */
+/* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+/* USER CODE BEGIN PFP */
+
 void MCU_Init(void);
 #if FW_TEST
 //System testing function
@@ -185,10 +159,11 @@ void DebugProbeInit(void);
 #endif /*End of FW_TEST*/
 /* USER CODE END PFP */
 
+/* Private user code ---------------------------------------------------------*/
+/* USER CODE BEGIN 0 */
 
-/******************************************************************************
-* Function Definitions
-*******************************************************************************/
+/* USER CODE END 0 */
+
 /**
   * @brief  The application entry point.
   * @retval int
@@ -225,7 +200,15 @@ int main(void)
 	MX_TIM16_Init();
 	MX_ADC1_Init();
 	/* USER CODE BEGIN 2 */
-	HAL_GPIO_TogglePin(D1_GPIO_Port, D1_Pin);
+#if DEBUG_ITM
+	GPIO_InitTypeDef GPIO_InitStruct = {0};
+	GPIO_InitStruct.Pin = LED_R_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+	HAL_GPIO_Init(LED_R_GPIO_Port, &GPIO_InitStruct);
+#endif  /* End of DEBUG_ITM */
+	HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
 	HAL_Delay(500);
 	Sys_Test();
 
@@ -234,18 +217,14 @@ int main(void)
 	printf("Electrical fence testing... \n");
 	for (int count = 0; count < 10; ++count)
 	{
-		HAL_GPIO_TogglePin(LED_G_Port, LED_G_Pin);
+		HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
 		HAL_Delay(100);
 		#if !DEBUG_ITM
-		HAL_GPIO_TogglePin(LED_R_Port, LED_R_Pin);
-		HAL_GPIO_TogglePin(BUZZER_Port, BUZZER_Pin);
+		HAL_GPIO_TogglePin(LED_R_GPIO_Port, LED_R_Pin);
 		#endif  /* End of DEBUG_ITM */
+		HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
 		HAL_Delay(100);
 	}
-
-
-
-
 
 	/*******************************************************/
 
@@ -398,22 +377,22 @@ eTestStatus FW_Test1(void)
 	sAlarm.Alarm = RTC_ALARM_A;
 	if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN) != HAL_OK)
 	{
-	  Error_Handler();
+		Error_Handler();
 	}
 	while(1)
 	{
 		if(g_rtcwakeup == true)
 		{
-//			sAlarm.AlarmTime.Seconds += 30;
-//			if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN) != HAL_OK)
-//			{
-//				Error_Handler();
-//			}
+			//			sAlarm.AlarmTime.Seconds += 30;
+			//			if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN) != HAL_OK)
+			//			{
+			//				Error_Handler();
+			//			}
 			printf("Alarm occurred\n");
 			g_rtcwakeup = false;
-//			sAlarm.AlarmTime.Minutes+=5;
+			//			sAlarm.AlarmTime.Minutes+=5;
 		}
-//		EnterStopMode();
+		//		EnterStopMode();
 	}
 	return fw1_teststatus;
 
@@ -426,20 +405,20 @@ eTestStatus FW_Test1(void)
 #define LENGTH			50
 
 uint8_t g_ui8dataRecv[LENGTH]={	1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-								1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-								1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-								1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-								1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+		1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 uint8_t g_ui8dataWrite[LENGTH]={ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-								11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-								21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
-								31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
-								41, 42, 43, 44, 45, 46, 47, 48, 49};
+		11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+		21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+		31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+		41, 42, 43, 44, 45, 46, 47, 48, 49};
 uint8_t g_ui8dataNull[LENGTH]={	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-								0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-								0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-								0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-								0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 static void EEPROM_Read(uint16_t Address_U16, uint8_t* Data_U8P, uint16_t Length_U16)
 {
@@ -498,21 +477,21 @@ static void EEPROM_Write( uint16_t Address_U16, uint8_t* Data_U8P, uint16_t Len_
 
 	FlashData.Length_U16 = 0;
 
-    if (pageOffset > 0)
-    {
-    	FlashData.Length_U16 = cPageSize_U16 - pageOffset;
-
-    	if (FlashData.Length_U16 >= Length_U16)
-    		FlashData.Length_U16 = Length_U16;
-
-    	EEPROM_WritePage(FlashData);
-        Length_U16 -= FlashData.Length_U16;
-    }
-
-    if (Length_U16 > 0)
+	if (pageOffset > 0)
 	{
-    	FlashData.MemoryAddress_U16	+= FlashData.Length_U16;
-    	FlashData.Data_U8P 			+= FlashData.Length_U16;
+		FlashData.Length_U16 = cPageSize_U16 - pageOffset;
+
+		if (FlashData.Length_U16 >= Length_U16)
+			FlashData.Length_U16 = Length_U16;
+
+		EEPROM_WritePage(FlashData);
+		Length_U16 -= FlashData.Length_U16;
+	}
+
+	if (Length_U16 > 0)
+	{
+		FlashData.MemoryAddress_U16	+= FlashData.Length_U16;
+		FlashData.Data_U8P 			+= FlashData.Length_U16;
 
 		// Write complete and aligned pages.
 		uint8_t pageCount = Length_U16 / cPageSize_U16;
@@ -541,7 +520,7 @@ eTestStatus EEPROM_FWTest(void)
 {
 	uint8_t uid[32]={0};
 	EEPROM_test = RET_FAIL;
-	#if EEPROM_TEST
+#if EEPROM_TEST
 	HAL_GPIO_WritePin(EEPROM_EN_GPIO_Port, EEPROM_EN_Pin, GPIO_PIN_SET);	//Enable EEPROM module
 	HAL_Delay(100);															//Wait for stable
 	////////////////////////////////////////////////////////////
@@ -554,10 +533,10 @@ eTestStatus EEPROM_FWTest(void)
 		EEPROM_test = RET_OK;
 	}
 
-	#else
+#else
 	printf("----- Skipped test ----- \n");
 
-	#endif /*End of EEPROM_TEST*/
+#endif /*End of EEPROM_TEST*/
 	return EEPROM_test;
 }
 
@@ -700,7 +679,7 @@ static void ACL_ReadSource(void)
 eTestStatus ACL_FWTest(void)
 {
 	ACL_test = RET_FAIL;
-	#if ACL_TEST
+#if ACL_TEST
 	if(ACL_Init() == false) return ACL_test; //break immediately if can't initialized ACL
 	ACL_Active();
 	ACL_EnableInterrupt();
@@ -710,18 +689,18 @@ eTestStatus ACL_FWTest(void)
 		ACL_ReadAxis();
 		printf("Raw data ACL sensors x y z: %d : %d : %d \n",g_rawX, g_rawY, g_rawZ);
 		HAL_Delay(50);
-		#if !ENDLESS_LOOP_ACL
+#if !ENDLESS_LOOP_ACL
 		break;
-		#endif /* ENDLESS_LOOP_ACL */
+#endif /* ENDLESS_LOOP_ACL */
 	}
 
-	#if DISABLE_ACL_IRQ
+#if DISABLE_ACL_IRQ
 	ACL_Standby();	/* Prevent wake up from ACL */
-	#endif /*End of DISABLE_ACL_IRQ*/
+#endif /*End of DISABLE_ACL_IRQ*/
 
-	#else
+#else
 	printf("----- Skipped test ----- \n");
-	#endif /*End of ACL_Test*/
+#endif /*End of ACL_Test*/
 	return ACL_test;
 }
 
@@ -756,25 +735,25 @@ eTestStatus ACL_FWTest(void)
 /* LoRa commands */
 const char* LoRaInitCommands[] =
 {
-	RAK4200_WAKEUP,
-	#if CHANGE_DEVEUI
-	RAK4200_SET_DEVEUI,
-	#endif
-	RAK4200_SET_APPEUI,
-	RAK4200_SET_APPKEY,
-	RAK4200_SET_DR0,
+		RAK4200_WAKEUP,
+#if CHANGE_DEVEUI
+		RAK4200_SET_DEVEUI,
+#endif
+		RAK4200_SET_APPEUI,
+		RAK4200_SET_APPKEY,
+		RAK4200_SET_DR0,
 
 };
 
 typedef enum eLoRaState
 {
-    DEVICE_STATE_RESTORE,
-    DEVICE_STATE_STARTED,
-    DEVICE_STATE_JOIN,
+	DEVICE_STATE_RESTORE,
+	DEVICE_STATE_STARTED,
+	DEVICE_STATE_JOIN,
 	DEVICE_STATE_JOINED,
-    DEVICE_STATE_SEND,
-    DEVICE_STATE_CYCLE,
-    DEVICE_STATE_SLEEP,
+	DEVICE_STATE_SEND,
+	DEVICE_STATE_CYCLE,
+	DEVICE_STATE_SLEEP,
 }eLoRaState;
 eLoRaState LoRa_curState = DEVICE_STATE_RESTORE;
 
@@ -789,14 +768,14 @@ eTestStatus LORA_FWTest(void)
 	uint8_t lora_datarecv=0;
 	uint8_t lora_dataindex=0;
 	LORA_test = RET_FAIL;
-	#if LORA_TEST
+#if LORA_TEST
 	HAL_Delay(1000);
 	HAL_GPIO_WritePin(RAK_EN_GPIO_Port, RAK_EN_Pin, GPIO_PIN_SET);
 	HAL_Delay(2000);												//Wait for stable
-	#if DEBUG_AT_UART
+#if DEBUG_AT_UART
 	HAL_GPIO_DeInit(GPIOA, GPIO_PIN_2);
 	HAL_GPIO_DeInit(GPIOA, GPIO_PIN_3);
-	#else 															/* End of DEBUG_AT_UART  */
+#else 															/* End of DEBUG_AT_UART  */
 	__HAL_UART_ENABLE_IT(&hlpuart1,UART_IT_IDLE); 					/* Enable UART RX Idle interrupt */
 	HAL_UART_Receive_DMA(&hlpuart1, g_rxdmabuffer, RX_DMABUF_LEN);  /* Enable receive data via DMA */
 	if(g_LoRaInit == false) //Init LoRa & LoRaWan parameter in case not initialized yet
@@ -860,7 +839,7 @@ eTestStatus LORA_FWTest(void)
 		}
 	}
 	// Testing transfer data (up/downlink messages)
-	#if TEST_DMA
+#if TEST_DMA
 	if(LoRa_curState == DEVICE_STATE_JOINED)
 	{
 		printf("Sending uplink\n");
@@ -882,14 +861,14 @@ eTestStatus LORA_FWTest(void)
 						g_dmanewdata = false;
 						break;
 					}
-						printf("Re-send uplink %d \n", retry_count);
-						g_dmanewdata = false;
-						HAL_Delay(100);
+					printf("Re-send uplink %d \n", retry_count);
+					g_dmanewdata = false;
+					HAL_Delay(100);
 				}
 			}
 		}
 	}
-	#else
+#else
 
 	if(LoRa_curState == DEVICE_STATE_JOINED)
 	{
@@ -903,16 +882,16 @@ eTestStatus LORA_FWTest(void)
 				{
 					if( (HAL_UART_Receive_IT(&hlpuart1, &lora_datarecv, 1) == HAL_OK))
 					{
-							g_lora_datarecv[lora_dataindex++] = lora_datarecv;
+						g_lora_datarecv[lora_dataindex++] = lora_datarecv;
 					}
 				}while( (strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) == NULL));
 				if( (strstr( (const char*)g_lora_datarecv, (const char*)"at+send")) != NULL)
-				#if !TEST_DOWNLINK //Since this will cause losing downlink data
+#if !TEST_DOWNLINK //Since this will cause losing downlink data
 				{
 					printf("Send uplink completed\n");
 					break;
 				}
-				#else	//Test downlink
+#else	//Test downlink
 				{
 					do
 					{
@@ -930,11 +909,11 @@ eTestStatus LORA_FWTest(void)
 						HAL_UART_Transmit(&huart1, g_lora_datarecv, strlen(g_lora_datarecv), 100);
 					}
 				}
-				#endif /*End of !TEST_DOWNLINK*/
+#endif /*End of !TEST_DOWNLINK*/
 			}
 		}
 	}
-	#if TEST_SLEEPLORA
+#if TEST_SLEEPLORA
 	for (int retry_count = 0; retry_count < MAX_REJOIN; ++retry_count)
 	{
 		memset(g_lora_datarecv, 0, RX_BUF_LEN);
@@ -948,18 +927,18 @@ eTestStatus LORA_FWTest(void)
 					g_lora_datarecv[lora_dataindex++] = lora_datarecv;
 				}
 			}while( (strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) == NULL));
-				printf("LoRa Sleep\n");
-				break;
+			printf("LoRa Sleep\n");
+			break;
 		}
 	}
-	#endif /*End of TEST_DMA*/
-	#endif /*End of TEST_SLEEPLORA*/
-	#endif /* End of DEBUG_AT_UART */
+#endif /*End of TEST_DMA*/
+#endif /*End of TEST_SLEEPLORA*/
+#endif /* End of DEBUG_AT_UART */
 
-	#else
+#else
 	printf("----- Skipped test ----- \n");
 
-	#endif /* End of LORA_TEST */
+#endif /* End of LORA_TEST */
 	return LORA_test;
 }
 
@@ -1030,7 +1009,7 @@ bool GPS_Settings(void)
 			if (strstr( (const char*)g_gps_datarecv, (const char*)"PMTK001,314") != NULL)
 			{
 				printf("Data recv GPS:  %s \n", g_gps_datarecv);
-//				HAL_UART_Transmit(&huart1, g_gps_datarecv, recv_count, 100);
+				//				HAL_UART_Transmit(&huart1, g_gps_datarecv, recv_count, 100);
 				return true;
 			}
 		}
@@ -1041,16 +1020,16 @@ bool GPS_Settings(void)
 eTestStatus GPS_FWTest(void)
 {
 	GPS_test = RET_FAIL;
-	#if GPS_TEST
+#if GPS_TEST
 	HAL_Delay(1000);
 	HAL_GPIO_WritePin(GPS_EN_GPIO_Port, GPS_EN_Pin, GPIO_PIN_SET);
 	HAL_Delay(3000);												//Wait for GPS supply power stable
 	if (GPS_Settings() == true) GPS_test = RET_OK;
 	else						GPS_test = RET_FAIL;
 	HAL_GPIO_WritePin(GPS_EN_GPIO_Port, GPS_EN_Pin, GPIO_PIN_RESET);
-	#else
+#else
 	printf("----- Skipped test ----- \n");
-	#endif /*End GPS_TEST*/
+#endif /*End GPS_TEST*/
 	return GPS_test;
 }
 
@@ -1066,30 +1045,30 @@ volatile bool g_endseq=false;
 eTestStatus ADC_FWTest(void)
 {
 	ADC_test = RET_FAIL;
-	#ifdef ADC_TEST
+#ifdef ADC_TEST
 	HAL_GPIO_WritePin(EN_BATT_GPIO_Port, EN_BATT_Pin, GPIO_PIN_SET);
 	HAL_Delay(500);			/* Wait for stable */
 	while(1)
 	{
-	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
-	HAL_ADC_Start_IT(&hadc1);
-	while(g_newadcdata != true);
-	ADC_test = RET_OK;
-	HAL_ADC_Stop_IT(&hadc1);
-	g_ui32vref = __LL_ADC_CALC_VREFANALOG_VOLTAGE(g_ui32ADCraw[0], ADC_RESOLUTION_12B);
-	g_ui32input= __LL_ADC_CALC_DATA_TO_VOLTAGE(g_ui32vref, g_ui32ADCraw[1], ADC_RESOLUTION_12B);
-	g_ui32bat = 4 * g_ui32input;
-	printf("Battery voltages: %ld (mV)\n",g_ui32bat);
-	g_newadcdata = false;
-	#if !ENDLESS_BATT_MEASURING
-	break;
-	#endif /*End of ENDLESS_BATT_MEASURING*/
+		HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+		HAL_ADC_Start_IT(&hadc1);
+		while(g_newadcdata != true);
+		ADC_test = RET_OK;
+		HAL_ADC_Stop_IT(&hadc1);
+		g_ui32vref = __LL_ADC_CALC_VREFANALOG_VOLTAGE(g_ui32ADCraw[0], ADC_RESOLUTION_12B);
+		g_ui32input= __LL_ADC_CALC_DATA_TO_VOLTAGE(g_ui32vref, g_ui32ADCraw[1], ADC_RESOLUTION_12B);
+		g_ui32bat = 4 * g_ui32input;
+		printf("Battery voltages: %ld (mV)\n",g_ui32bat);
+		g_newadcdata = false;
+#if !ENDLESS_BATT_MEASURING
+		break;
+#endif /*End of ENDLESS_BATT_MEASURING*/
 	}
 
-	#else
+#else
 	printf("----- Skipped test ----- \n");
 
-	#endif /*End of ADC_TEST*/
+#endif /*End of ADC_TEST*/
 	return ADC_test;
 }
 
@@ -1132,39 +1111,35 @@ void DebugProbeInit(void)
 
 void EnterStopMode( void)
 {
-	uint32_t DeInitpinsPortA=GPIO_PIN_All;
-	uint32_t DeInitpinsPortB=GPIO_PIN_All;
 	printf("Entering stop 2 mode...\n");
 
-	HAL_GPIO_TogglePin(D1_GPIO_Port, D1_Pin);
+	HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
 	HAL_Delay(500);
-	HAL_GPIO_TogglePin(D1_GPIO_Port, D1_Pin);
+	HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
 	HAL_Delay(500);
-	HAL_GPIO_TogglePin(D1_GPIO_Port, D1_Pin);
+	HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
 
 	LL_C2_PWR_SetPowerMode(LL_PWR_MODE_SHUTDOWN);
 	__HAL_RCC_ADC_CLK_DISABLE();
 	__HAL_RCC_LPUART1_CLK_DISABLE();
 
 	// Module control pins -> low output
-	HAL_GPIO_WritePin(EN_BATT_GPIO_Port, EN_BATT_Pin, GPIO_PIN_RESET);   /* Turn off Batt */
-	HAL_GPIO_WritePin(EEPROM_EN_GPIO_Port, EEPROM_EN_Pin, GPIO_PIN_RESET); /* Turn off EEPROM */
-	HAL_GPIO_WritePin(DISTANCE_EN_GPIO_Port, DISTANCE_EN_Pin, GPIO_PIN_RESET);	/* Turn off Distance */
-	HAL_GPIO_WritePin(RAK_EN_GPIO_Port, RAK_EN_Pin, GPIO_PIN_RESET);	/* Turn off RAk4200 */
-	HAL_GPIO_WritePin(GPS_EN_GPIO_Port, GPS_EN_Pin, GPIO_PIN_RESET);	/* Turn off GPS */
+	HAL_GPIO_WritePin(EN_BATT_GPIO_Port, EN_BATT_Pin, GPIO_PIN_RESET);   	/* Turn off Batt */
+	HAL_GPIO_WritePin(EEPROM_EN_GPIO_Port, EEPROM_EN_Pin, GPIO_PIN_RESET); 	/* Turn off EEPROM */
+	HAL_GPIO_WritePin(RAK_EN_GPIO_Port, RAK_EN_Pin, GPIO_PIN_RESET);		/* Turn off RAk4200 */
 
-    // Stop SYSTICK Timer
-    HAL_SuspendTick();
+	// Stop SYSTICK Timer
+	HAL_SuspendTick();
 
-    // Enter Stop Mode
-    HAL_PWREx_EnterSTOP2Mode(PWR_STOPENTRY_WFI);
+	// Enter Stop Mode
+	HAL_PWREx_EnterSTOP2Mode(PWR_STOPENTRY_WFI);
 
-    //Wake up
-    SystemClock_Config();
+	//Wake up
+	SystemClock_Config();
 
-    // Resume SYSTICK Timer
-    HAL_ResumeTick();
-    printf("Waked up from stop 2 \n");
+	// Resume SYSTICK Timer
+	HAL_ResumeTick();
+	printf("Waked up from stop 2 \n");
 
 }
 
@@ -1191,34 +1166,34 @@ HAL_StatusTypeDef I2C_Transferring(tI2CPackage *I2CPackage_T)
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
-	 if(LL_ADC_IsActiveFlag_EOS(ADC1) != 0) /* EOS event */
-	 {
-		 g_ui32ADCraw[1] = HAL_ADC_GetValue(&hadc1);
-		 g_newadcdata = true;
-	 }
-	 else									/* EOC event */
-	 {
-		 g_ui32ADCraw[0] = HAL_ADC_GetValue(&hadc1);
-	 }
+	if(LL_ADC_IsActiveFlag_EOS(ADC1) != 0) /* EOS event */
+	{
+		g_ui32ADCraw[1] = HAL_ADC_GetValue(&hadc1);
+		g_newadcdata = true;
+	}
+	else									/* EOC event */
+	{
+		g_ui32ADCraw[0] = HAL_ADC_GetValue(&hadc1);
+	}
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	switch (GPIO_Pin)
 	{
-		case WK_ACL_Pin: //ACL wake up handler
-			g_acl_interrupt = true;
-			ACL_ReadSource();
-			ACL_EnableInterrupt();
-			break;
+	case WK_ACL_Pin: //ACL wake up handler
+		g_acl_interrupt = true;
+		ACL_ReadSource();
+		ACL_EnableInterrupt();
+		break;
 
-		case SW_DIS_Pin:
-			g_buttonpressed = true;
-			if(g_testingble == true)
-			{
-				UTIL_SEQ_SetTask(1<<CFG_TASK_SW1_BUTTON_PUSHED_ID, CFG_SCH_PRIO_0);
-			}
-			break;
+	case SW_DIS_Pin:
+		g_buttonpressed = true;
+		if(g_testingble == true)
+		{
+			UTIL_SEQ_SetTask(1<<CFG_TASK_SW1_BUTTON_PUSHED_ID, CFG_SCH_PRIO_0);
+		}
+		break;
 	}
 }
 
@@ -1236,7 +1211,7 @@ void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
+	/* User can add his own implementation to report the HAL error return state */
 
   /* USER CODE END Error_Handler_Debug */
 }
@@ -1252,7 +1227,7 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
+	/* User can add his own implementation to report the file name and line number,
      tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
