@@ -172,36 +172,36 @@ void DebugProbeInit(void);
   */
 int main(void)
 {
-	/* USER CODE BEGIN 1 */
+  /* USER CODE BEGIN 1 */
 
-	/* USER CODE END 1 */
+  /* USER CODE END 1 */
 
-	/* MCU Configuration--------------------------------------------------------*/
+  /* MCU Configuration--------------------------------------------------------*/
 
-	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-	HAL_Init();
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
 
-	/* USER CODE BEGIN Init */
-	/* USER CODE END Init */
+  /* USER CODE BEGIN Init */
+  /* USER CODE END Init */
 
-	/* Configure the system clock */
-	SystemClock_Config();
+  /* Configure the system clock */
+  SystemClock_Config();
 
-	/* USER CODE BEGIN SysInit */
+  /* USER CODE BEGIN SysInit */
 
-	/* USER CODE END SysInit */
+  /* USER CODE END SysInit */
 
-	/* Initialize all configured peripherals */
-	MX_GPIO_Init();
-	MX_DMA_Init();
-	MX_USART1_UART_Init();
-	MX_RF_Init();
-	MX_RTC_Init();
-	MX_I2C1_Init();
-	MX_LPUART1_UART_Init();
-	MX_TIM16_Init();
-	MX_ADC1_Init();
-	/* USER CODE BEGIN 2 */
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_DMA_Init();
+  MX_USART1_UART_Init();
+  MX_RF_Init();
+  MX_RTC_Init();
+  MX_I2C1_Init();
+  MX_LPUART1_UART_Init();
+  MX_TIM16_Init();
+  MX_ADC1_Init();
+  /* USER CODE BEGIN 2 */
 
 	#if DEBUG_ITM
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -214,6 +214,12 @@ int main(void)
 
 	HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
 	HAL_Delay(500);
+	#if ENDLESS_ADC_MEASURING
+	while(1)
+	{
+		ADC_ElecFenceTest();
+	}
+	#endif  /* End of ENDLESS_ADC_MEASURING */
 	Sys_Test();
 
 	/************** Electrical fence testing ***************/
@@ -231,17 +237,17 @@ int main(void)
 	/*******************************************************/
 	g_testingble = true;
 	printf("Testing BLE function (including button test)\n");
-	/* USER CODE END 2 */
+  /* USER CODE END 2 */
 
-	/* Init code for STM32_WPAN */
-	APPE_Init();
-	/* Infinite loop */
-	/* USER CODE BEGIN WHILE */
+  /* Init code for STM32_WPAN */
+  APPE_Init();
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
 	while (1)
 	{
-		/* USER CODE END WHILE */
+    /* USER CODE END WHILE */
 
-		/* USER CODE BEGIN 3 */
+    /* USER CODE BEGIN 3 */
 		#if BLE_TEST
 		UTIL_SEQ_Run(~0);
 		#endif  /* End of BLE_TEST */
@@ -250,7 +256,7 @@ int main(void)
 		ADC_ElecFenceTest();
 		#endif  /* End of ADC_ELECFENCE_TEST */
 	}
-	/* USER CODE END 3 */
+  /* USER CODE END 3 */
 }
 
 /**
@@ -1102,32 +1108,42 @@ eTestStatus ADC_ElecFenceTest(void)
 	ADCElecFence_Test = RET_FAIL;
 	#ifdef ADC_ELECFENCE_TEST
 	/* Power on ADC modules */
-	HAL_GPIO_WritePin(EN_BATT_GPIO_Port, EN_BATT_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(RELAY_EN_GPIO_Port, RELAY_EN_Pin, GPIO_PIN_SET);
-	HAL_Delay(500);			/* Wait for stable */
-	/* Start measuring & converting */
-	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
-	HAL_ADC_Start_DMA(&hadc1, g_ui32ADCraw, BUF_SIZE);
-	HAL_ADC_Start_IT(&hadc1);
-	while(g_newadcdata == false);
-	ADCElecFence_Test = RET_OK;
-	HAL_ADC_Stop_DMA(&hadc1);
-	g_ui32vref = __LL_ADC_CALC_VREFANALOG_VOLTAGE(g_ui32ADCraw[0], ADC_RESOLUTION_12B);
-	for(uint8_t idx=0; idx < BUF_SIZE-1 ; idx++) /* ignore Vref */
+	static bool wait_4completion=false;
+
+	if(wait_4completion == false)
 	{
-		g_ui32input[idx] = __LL_ADC_CALC_DATA_TO_VOLTAGE(g_ui32vref, g_ui32ADCraw[idx+1], ADC_RESOLUTION_12B);
+		HAL_GPIO_WritePin(EN_BATT_GPIO_Port, EN_BATT_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(RELAY_EN_GPIO_Port, RELAY_EN_Pin, GPIO_PIN_SET);
+		HAL_Delay(500);			/* Wait for stable */
+		/* Start measuring & converting */
+		HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+		HAL_ADC_Start_DMA(&hadc1, g_ui32ADCraw, BUF_SIZE);
+		HAL_ADC_Start_IT(&hadc1);
+		wait_4completion = true;
 	}
-	/* Convert to application data */
-	g_ui32bat = g_ui32input[0] * 4;
-	g_ui32_12v = g_ui32input[1] *5;
-	g_ui32_pos = g_ui32input[2];
-	g_ui32_neg = g_ui32input[3];
-	g_newadcdata = false;
-	HAL_ADC_Stop_DMA(&hadc1);
-	HAL_ADC_Stop_IT(&hadc1);
-	#else
+	if(g_newadcdata != false)
+	{
+		ADCElecFence_Test = RET_OK;
+		HAL_ADC_Stop_DMA(&hadc1);
+		g_ui32vref = __LL_ADC_CALC_VREFANALOG_VOLTAGE(g_ui32ADCraw[0], ADC_RESOLUTION_12B);
+		for(uint8_t idx=0; idx < BUF_SIZE-1 ; idx++) /* ignore Vref */
+		{
+			g_ui32input[idx] = __LL_ADC_CALC_DATA_TO_VOLTAGE(g_ui32vref, g_ui32ADCraw[idx+1], ADC_RESOLUTION_12B);
+		}
+		/* Convert to application data */
+		g_ui32bat = g_ui32input[0] * 4;
+		g_ui32_12v = g_ui32input[1] *5;
+		g_ui32_pos = g_ui32input[2];
+		g_ui32_neg = g_ui32input[3];
+		/* Set flags and stop measuring */
+		g_newadcdata = false;
+		wait_4completion = false;
+		HAL_ADC_Stop_DMA(&hadc1);
+		HAL_ADC_Stop_IT(&hadc1);
+	}
+#else
 	printf("----- Skipped test ----- \n");
-	#endif /*End of ADC_ELECFENCE_TEST*/
+#endif /*End of ADC_ELECFENCE_TEST*/
 	return ADCElecFence_Test;
 }
 #endif  /* End of ADC_ELECFENCE_TEST */

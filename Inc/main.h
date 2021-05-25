@@ -95,6 +95,7 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define ENDLESS_LOOP_ACL					NOT_USED
 #define ENDLESS_LOOP_DYP					NOT_USED
 #define ENDLESS_BATT_MEASURING				NOT_USED
+#define ENDLESS_ADC_MEASURING				NOT_USED
 #define DEBUG_LORA_AT_UART					NOT_USED
 
 #define FW_TEST								USED
