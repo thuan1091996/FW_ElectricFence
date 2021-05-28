@@ -165,8 +165,8 @@ typedef struct
 /* USER CODE END PTD */
 
 /* Private defines -----------------------------------------------------------*/
-#define FAST_ADV_TIMEOUT               (30*1000*1000/CFG_TS_TICK_VAL) /**< 30s */
-#define INITIAL_ADV_TIMEOUT            (60*1000*1000/CFG_TS_TICK_VAL) /**< 60s */
+#define FAST_ADV_TIMEOUT               (300*1000*1000/CFG_TS_TICK_VAL) /**< 300s */
+#define INITIAL_ADV_TIMEOUT            (600*1000*1000/CFG_TS_TICK_VAL) /**< 600s */
 
 #define BD_ADDR_SIZE_LOCAL    6
 
@@ -226,21 +226,20 @@ uint8_t index_con_int, mutex;
 /**
  * Advertising Data
  */
-uint8_t ad_data[11] = {
-    9, AD_TYPE_COMPLETE_LOCAL_NAME, 'X', 'X', '-', 'S', 'T', 'M', '3', '2',  /* Complete name */
-
+uint8_t ad_data[5] = {
+    4, AD_TYPE_MANUFACTURER_SPECIFIC_DATA, 0x30, 0x00, 0x00 /*  */,
 };
 /**
  * Advertising Data
  */
 #if (P2P_SERVER1 != 0)
-static const char local_name[] = { AD_TYPE_COMPLETE_LOCAL_NAME ,'N','O','D','E','-','0','7'};
+static const char local_name[] = { AD_TYPE_COMPLETE_LOCAL_NAME ,'F','E','N','C','E','-','0'};
 uint8_t manuf_data[14] = {
     sizeof(manuf_data)-1, AD_TYPE_MANUFACTURER_SPECIFIC_DATA,
     0x01/*SKD version */,
     CFG_DEV_ID_P2P_SERVER1 /* STM32WB - P2P Server 1*/,
     0x00 /* GROUP A Feature  */,
-    0x00 /* GROUP A Feature */,
+    0x04 /* GROUP A Feature */,
     0x00 /* GROUP B Feature */,
     0x00 /* GROUP B Feature */,
     0x00, /* BLE MAC start -MSB */
@@ -552,7 +551,12 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
       {
         BleApplicationContext.BleApplicationContext_legacy.connectionHandle = 0;
         BleApplicationContext.Device_Connection_Status = APP_BLE_IDLE;
-
+        for (uint8_t count = 0; count < 10; ++count)	/* Blink then shut down Buzzer */
+		{
+        	HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
+        	HAL_Delay(100);
+		}
+        HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
         APP_DBG_MSG("\r\n\r** DISCONNECTION EVENT WITH CLIENT \n");
       }
 
@@ -631,6 +635,8 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
           connection_complete_event = (hci_le_connection_complete_event_rp0 *) meta_evt->data;
 
           HW_TS_Stop(BleApplicationContext.Advertising_mgr_timer_Id);
+
+          HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_SET);
 
           APP_DBG_MSG("HCI_LE_CONNECTION_COMPLETE_SUBEVT_CODE for connection handle 0x%x\n", connection_complete_event->Connection_Handle);
           if (BleApplicationContext.Device_Connection_Status == APP_BLE_LP_CONNECTING)
@@ -955,19 +961,19 @@ static void Adv_Request(APP_BLE_ConnStatus_t New_Status)
     /* Start Fast or Low Power Advertising */
     ret = aci_gap_set_discoverable(
         ADV_TYPE,
-        CFG_FAST_CONN_ADV_INTERVAL_MIN,
-        CFG_FAST_CONN_ADV_INTERVAL_MAX,
+		Min_Inter,
+        Max_Inter,
         BLE_ADDR_TYPE,
         ADV_FILTER,
-        0,
-        0,
+        sizeof(local_name),
+        (uint8_t*) &local_name,
         0,
         0,
         0,
         0);
 
     /* Update Advertising data */
-    ret = aci_gap_update_adv_data(sizeof(ad_data), (uint8_t*) ad_data);
+    ret = aci_gap_update_adv_data(sizeof(manuf_data), (uint8_t*) manuf_data);
 
     if (ret == BLE_STATUS_SUCCESS)
     {

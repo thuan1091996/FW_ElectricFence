@@ -37,6 +37,7 @@ typedef struct
 {
   /* ELECTRICFENCE */
   uint8_t               Hv_Notification_Status;
+  uint8_t               Vbat_Notification_Status;
 /* USER CODE BEGIN CUSTOM_APP_Context_t */
 
 /* USER CODE END CUSTOM_APP_Context_t */
@@ -81,6 +82,8 @@ uint8_t SecureReadData;
   /* ELECTRICFENCE */
 static void Custom_Hv_Update_Char(void);
 static void Custom_Hv_Send_Notification(void);
+static void Custom_Vbat_Update_Char(void);
+static void Custom_Vbat_Send_Notification(void);
 
 /* USER CODE BEGIN PFP */
 
@@ -115,6 +118,30 @@ void Custom_STM_App_Notification(Custom_STM_App_Notification_evt_t *pNotificatio
 /* USER CODE BEGIN CUSTOM_STM_HV_NOTIFY_DISABLED_EVT */
 
 /* USER CODE END CUSTOM_STM_HV_NOTIFY_DISABLED_EVT */
+      break;
+
+    case CUSTOM_STM_VBAT_READ_EVT:
+/* USER CODE BEGIN CUSTOM_STM_VBAT_READ_EVT */
+
+/* USER CODE END CUSTOM_STM_VBAT_READ_EVT */
+      break;
+
+    case CUSTOM_STM_VBAT_WRITE_NO_RESP_EVT:
+/* USER CODE BEGIN CUSTOM_STM_VBAT_WRITE_NO_RESP_EVT */
+
+/* USER CODE END CUSTOM_STM_VBAT_WRITE_NO_RESP_EVT */
+      break;
+
+    case CUSTOM_STM_VBAT_NOTIFY_ENABLED_EVT:
+/* USER CODE BEGIN CUSTOM_STM_VBAT_NOTIFY_ENABLED_EVT */
+
+/* USER CODE END CUSTOM_STM_VBAT_NOTIFY_ENABLED_EVT */
+      break;
+
+    case CUSTOM_STM_VBAT_NOTIFY_DISABLED_EVT:
+/* USER CODE BEGIN CUSTOM_STM_VBAT_NOTIFY_DISABLED_EVT */
+
+/* USER CODE END CUSTOM_STM_VBAT_NOTIFY_DISABLED_EVT */
       break;
 
     default:
@@ -202,6 +229,31 @@ void Custom_Hv_Send_Notification(void) /* Property Notification */
     /* USER CODE BEGIN Hv_NS*/
 
     /* USER CODE END Hv_NS*/
+  }
+  else
+  {
+    APP_DBG_MSG("-- CUSTOM APPLICATION : CAN'T INFORM CLIENT -  NOTIFICATION DISABLED\n ");
+  }
+  return;
+}
+
+void Custom_Vbat_Update_Char(void) /* Property Read */
+{
+  Custom_STM_App_Update_Char(CUSTOM_STM_VBAT, (uint8_t *)UpdateCharData);
+  /* USER CODE BEGIN Vbat_UC*/
+
+  /* USER CODE END Vbat_UC*/
+  return;
+}
+
+void Custom_Vbat_Send_Notification(void) /* Property Notification */
+ {
+  if(Custom_App_Context.Vbat_Notification_Status)
+  {
+    Custom_STM_App_Update_Char(CUSTOM_STM_VBAT, (uint8_t *)NotifyCharData);
+    /* USER CODE BEGIN Vbat_NS*/
+
+    /* USER CODE END Vbat_NS*/
   }
   else
   {

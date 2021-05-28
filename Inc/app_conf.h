@@ -104,8 +104,8 @@
 /**
  * Device name configuration for Generic Access Service
  */
-#define CFG_GAP_DEVICE_NAME             "TEMPLATE"
-#define CFG_GAP_DEVICE_NAME_LENGTH      (8)
+#define CFG_GAP_DEVICE_NAME             "DFM-FENCE"
+#define CFG_GAP_DEVICE_NAME_LENGTH      (9)
 
 /**
  * Define PHY
@@ -157,7 +157,7 @@
 #define CFG_DEV_ID_P2P_SERVER6                  (0x8A)
 #define CFG_DEV_ID_P2P_ROUTER                   (0x85)
 
-#define  RADIO_ACTIVITY_EVENT   1          /* 1 for OOB Demo */
+#define  RADIO_ACTIVITY_EVENT   				0          /* 1 for OOB Demo */
 
 /**
 * AD Element - Group B Feature
