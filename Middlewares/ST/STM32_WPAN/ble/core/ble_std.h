@@ -1,11 +1,11 @@
 /******************************************************************************
  * @file    ble_std.h
- * @author  MCD Application Team
+ * @author  MCD
  * @brief   BLE standard definitions
  ******************************************************************************
  * @attention
  *
- * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
+ * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
  * All rights reserved.</center></h2>
  *
  * This software component is licensed by ST under Ultimate Liberty license
@@ -68,6 +68,10 @@
 #define HCI_LE_ENHANCED_CONNECTION_COMPLETE_SUBEVT_CODE        0x0A
 #define HCI_LE_DIRECT_ADVERTISING_REPORT_SUBEVT_CODE           0x0B
 #define HCI_LE_PHY_UPDATE_COMPLETE_SUBEVT_CODE                 0x0C
+#define HCI_LE_EXTENDED_ADVERTISING_REPORT_SUBEVT_CODE         0x0D
+#define HCI_LE_SCAN_TIMEOUT_SUBEVT_CODE                        0x11
+#define HCI_LE_ADVERTISING_SET_TERMINATED_SUBEVT_CODE          0x12
+#define HCI_LE_SCAN_REQUEST_RECEIVED_SUBEVT_CODE               0x13
 
 /* HCI error code */
 #define HCI_SUCCESS_ERR_CODE                                   0x00

@@ -21,7 +21,10 @@ extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32wbxx_hal.h"
+
 #include "app_conf.h"
+#include "app_entry.h"
+#include "app_common.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -104,16 +107,18 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define GPS_TEST							NOT_USED
 
 #ifdef FW_ELECFENCE
-#define ADC_ELECFENCE_TEST					USED
+#define ADC_ELECFENCE_TEST					NOT_USED
 #else
 #define ADC_TEST							USED
 #endif  /* End of ifdef FW_ELECFENCE */
 
 #define LORA_TEST							NOT_USED
+#if LORA_TEST
 #define CHANGE_DEVEUI						USED
-#define BLE_TEST							NOT_USED
-
 #define TEST_DOWNLINK						USED
+#endif  /* End of LORA_TEST */
+
+#define BLE_TEST							USED
 #define	DISABLE_ACL_IRQ						NOT_USED
 
 

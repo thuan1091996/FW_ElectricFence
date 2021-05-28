@@ -1,12 +1,12 @@
 /******************************************************************************
  * @file    ble_gatt_aci.c
- * @author  MCD Application Team
+ * @author  MCD
  * @brief   STM32WB BLE API (gatt_aci)
  *          Auto-generated file: do not edit!
  ******************************************************************************
  * @attention
  *
- * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
+ * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
  * All rights reserved.</center></h2>
  *
  * This software component is licensed by ST under Ultimate Liberty license

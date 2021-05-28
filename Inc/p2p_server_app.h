@@ -1,4 +1,4 @@
-/* USER CODE BEGIN */
+/* USER CODE BEGIN Header */
 /**
  ******************************************************************************
  * File Name          : p2p_server_app.h

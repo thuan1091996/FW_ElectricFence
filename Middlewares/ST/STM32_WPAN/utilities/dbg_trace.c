@@ -225,7 +225,7 @@ void DbgTraceInit( void )
  * @param	...: arguments to be formatted in format string
  * @retval none
  */
-size_t _write(int handle, const unsigned char * buf, size_t bufSize)
+__weak size_t _write(int handle, const unsigned char * buf, size_t bufSize)
 {
   return ( DbgTraceWrite(handle, buf, bufSize) );
 }
