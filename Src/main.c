@@ -170,36 +170,36 @@ void DebugProbeInit(void);
   */
 int main(void)
 {
-  /* USER CODE BEGIN 1 */
+	/* USER CODE BEGIN 1 */
 
-  /* USER CODE END 1 */
+	/* USER CODE END 1 */
 
-  /* MCU Configuration--------------------------------------------------------*/
+	/* MCU Configuration--------------------------------------------------------*/
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+	HAL_Init();
 
-  /* USER CODE BEGIN Init */
-  /* USER CODE END Init */
+	/* USER CODE BEGIN Init */
+	/* USER CODE END Init */
 
-  /* Configure the system clock */
-  SystemClock_Config();
+	/* Configure the system clock */
+	SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
+	/* USER CODE BEGIN SysInit */
 
-  /* USER CODE END SysInit */
+	/* USER CODE END SysInit */
 
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_DMA_Init();
-  MX_USART1_UART_Init();
-  MX_RF_Init();
-  MX_RTC_Init();
-  MX_I2C1_Init();
-  MX_LPUART1_UART_Init();
-  MX_TIM16_Init();
-  MX_ADC1_Init();
-  /* USER CODE BEGIN 2 */
+	/* Initialize all configured peripherals */
+	MX_GPIO_Init();
+	MX_DMA_Init();
+	MX_USART1_UART_Init();
+	MX_RF_Init();
+	MX_RTC_Init();
+	MX_I2C1_Init();
+	MX_LPUART1_UART_Init();
+	MX_TIM16_Init();
+	MX_ADC1_Init();
+	/* USER CODE BEGIN 2 */
 
 	#if DEBUG_ITM
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -235,17 +235,17 @@ int main(void)
 	/*******************************************************/
 	g_testingble = true;
 	printf("Testing BLE function (including button test)\n");
-  /* USER CODE END 2 */
+	/* USER CODE END 2 */
 
-  /* Init code for STM32_WPAN */
-  APPE_Init();
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
+	/* Init code for STM32_WPAN */
+	APPE_Init();
+	/* Infinite loop */
+	/* USER CODE BEGIN WHILE */
 	while (1)
 	{
-    /* USER CODE END WHILE */
+		/* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
+		/* USER CODE BEGIN 3 */
 		#if BLE_TEST
 		UTIL_SEQ_Run(~0);
 		#endif  /* End of BLE_TEST */
@@ -254,7 +254,7 @@ int main(void)
 		ADC_ElecFenceTest();
 		#endif  /* End of ADC_ELECFENCE_TEST */
 	}
-  /* USER CODE END 3 */
+	/* USER CODE END 3 */
 }
 
 /**

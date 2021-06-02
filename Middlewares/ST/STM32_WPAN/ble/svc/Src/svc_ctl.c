@@ -214,112 +214,111 @@ void SVCCTL_RegisterSvcHandler( SVC_CTL_p_EvtHandler_t pfBLE_SVC_Service_Event_H
 void SVCCTL_RegisterCltHandler( SVC_CTL_p_EvtHandler_t pfBLE_SVC_Client_Event_Handler )
 {
 #if (BLE_CFG_CLT_MAX_NBR_CB > 0)
-  SVCCTL_CltHandler.SVCCTL_CltHandlerTable[SVCCTL_CltHandler.NbreOfRegisteredHandler] = pfBLE_SVC_Client_Event_Handler;
-  SVCCTL_CltHandler.NbreOfRegisteredHandler++;
+	SVCCTL_CltHandler.SVCCTL_CltHandlerTable[SVCCTL_CltHandler.NbreOfRegisteredHandler] = pfBLE_SVC_Client_Event_Handler;
+	SVCCTL_CltHandler.NbreOfRegisteredHandler++;
 #else
-  (void)(pfBLE_SVC_Client_Event_Handler);
+	(void)(pfBLE_SVC_Client_Event_Handler);
 #endif
 
-  return;
+	return;
 }
 
 SVCCTL_UserEvtFlowStatus_t SVCCTL_UserEvtRx( void *pckt )
 {
-  hci_event_pckt *event_pckt;
-  evt_blecore_aci *blecore_evt;
-  SVCCTL_EvtAckStatus_t event_notification_status;
-  SVCCTL_UserEvtFlowStatus_t return_status;
-  uint8_t index;
+	hci_event_pckt *event_pckt;
+	evt_blecore_aci *blecore_evt;
+	SVCCTL_EvtAckStatus_t event_notification_status;
+	SVCCTL_UserEvtFlowStatus_t return_status;
+	uint8_t index;
 
-  event_pckt = (hci_event_pckt*) ((hci_uart_pckt *) pckt)->data;
-  event_notification_status = SVCCTL_EvtNotAck;
+	event_pckt = (hci_event_pckt*) ((hci_uart_pckt *) pckt)->data;
+	event_notification_status = SVCCTL_EvtNotAck;
+	/********************************************************* Handle GATT Events *********************************************************/
+	switch (event_pckt->evt)
+	{
+		case HCI_VENDOR_SPECIFIC_DEBUG_EVT_CODE:
+		{
+			blecore_evt = (evt_blecore_aci*) event_pckt->data;
+			switch ((blecore_evt->ecode) & SVCCTL_EGID_EVT_MASK)
+			{
+				case SVCCTL_GATT_EVT_TYPE: /* INCLUDE BOTH SERVICE EVENTS AND CLIENT EVENTS */
+					APP_DBG_MSG("\r\n ------ GATT EVENT OCCURRED ------\r\n");
+					#if (BLE_CFG_SVC_MAX_NBR_CB > 0) 	/* SERVICE EVENT HANDLER */
+					/* For Service event handler */
+					for (index = 0; index < SVCCTL_EvtHandler.NbreOfRegisteredHandler; index++)
+					{
+						event_notification_status = SVCCTL_EvtHandler.SVCCTL__SvcHandlerTab[index](pckt);
+						/**
+						 * When a GATT event has been acknowledged by a Service, there is no need to call the other registered handlers
+						 * a GATT event is relevant for only one Service
+						 */
+						if (event_notification_status != SVCCTL_EvtNotAck)
+						{
+							break; /* The event has been managed. The Event processing should be stopped */
+						}
+					}
+					#endif 								/* SERVICE EVENT HANDLER */
 
-  switch (event_pckt->evt)
-  {
-    case HCI_VENDOR_SPECIFIC_DEBUG_EVT_CODE:
-    {
-      blecore_evt = (evt_blecore_aci*) event_pckt->data;
+					#if (BLE_CFG_CLT_MAX_NBR_CB > 0)	/* CLIENT EVENT HANDLER */
+					/* For Client event handler */
+					event_notification_status = SVCCTL_EvtNotAck;
+					for(index = 0; index <SVCCTL_CltHandler.NbreOfRegisteredHandler; index++)
+					{
+						event_notification_status = SVCCTL_CltHandler.SVCCTL_CltHandlerTable[index](pckt);
+						/**
+						 * When a GATT event has been acknowledged by a Client, there is no need to call the other registered handlers
+						 * a GATT event is relevant for only one Client
+						 */
+						if (event_notification_status != SVCCTL_EvtNotAck)
+						{
+							/**
+							 *  The event has been managed. The Event processing should be stopped
+							 */
+							break;
+						}
+					}
+					#endif								/* CLIENT EVENT HANDLER */
+				break;
 
-      switch ((blecore_evt->ecode) & SVCCTL_EGID_EVT_MASK)
-      {
-        case SVCCTL_GATT_EVT_TYPE:
-#if (BLE_CFG_SVC_MAX_NBR_CB > 0)
-          /* For Service event handler */
-          for (index = 0; index < SVCCTL_EvtHandler.NbreOfRegisteredHandler; index++)
-          {
-            event_notification_status = SVCCTL_EvtHandler.SVCCTL__SvcHandlerTab[index](pckt);
-            /**
-             * When a GATT event has been acknowledged by a Service, there is no need to call the other registered handlers
-             * a GATT event is relevant for only one Service
-             */
-            if (event_notification_status != SVCCTL_EvtNotAck)
-            {
-              /**
-               *  The event has been managed. The Event processing should be stopped
-               */
-              break;
-            }
-          }
-#endif
-#if (BLE_CFG_CLT_MAX_NBR_CB > 0)
-          /* For Client event handler */
-          event_notification_status = SVCCTL_EvtNotAck;
-          for(index = 0; index <SVCCTL_CltHandler.NbreOfRegisteredHandler; index++)
-          {
-            event_notification_status = SVCCTL_CltHandler.SVCCTL_CltHandlerTable[index](pckt);
-            /**
-             * When a GATT event has been acknowledged by a Client, there is no need to call the other registered handlers
-             * a GATT event is relevant for only one Client
-             */
-            if (event_notification_status != SVCCTL_EvtNotAck)
-            {
-              /**
-               *  The event has been managed. The Event processing should be stopped
-               */
-              break;
-            }
-          }
-#endif
-          break;
+				default:
+				break;
+				}
+		}
+		break; /* HCI_HCI_VENDOR_SPECIFIC_DEBUG_EVT_CODE_SPECIFIC */
 
-        default:
-          break;
-      }
-    }
-      break; /* HCI_HCI_VENDOR_SPECIFIC_DEBUG_EVT_CODE_SPECIFIC */
+		default:
+		break;
+	}
+	/**************************************************************************************************************************************/
 
-    default:
-      break;
-  }
+	/**
+	 * When no registered handlers (either Service or Client) has acknowledged the GATT event, it is reported to the application
+	 * a GAP event is always reported to the applicaiton.
+	 */
+	switch (event_notification_status)
+	{
+	case SVCCTL_EvtNotAck:
+		/**
+		 *  The event has NOT been managed.
+		 *  It shall be passed to the application for processing
+		 */
+		return_status = SVCCTL_App_Notification(pckt);
+		break;
 
-  /**
-   * When no registered handlers (either Service or Client) has acknowledged the GATT event, it is reported to the application
-   * a GAP event is always reported to the applicaiton.
-   */
-  switch (event_notification_status)
-  {
-    case SVCCTL_EvtNotAck:
-      /**
-       *  The event has NOT been managed.
-       *  It shall be passed to the application for processing
-       */
-      return_status = SVCCTL_App_Notification(pckt);
-      break;
+	case SVCCTL_EvtAckFlowEnable:
+		return_status = SVCCTL_UserEvtFlowEnable;
+		break;
 
-    case SVCCTL_EvtAckFlowEnable:
-      return_status = SVCCTL_UserEvtFlowEnable;
-      break;
+	case SVCCTL_EvtAckFlowDisable:
+		return_status = SVCCTL_UserEvtFlowDisable;
+		break;
 
-    case SVCCTL_EvtAckFlowDisable:
-      return_status = SVCCTL_UserEvtFlowDisable;
-      break;
+	default:
+		return_status = SVCCTL_UserEvtFlowEnable;
+		break;
+	}
 
-    default:
-      return_status = SVCCTL_UserEvtFlowEnable;
-      break;
-  }
-
-  return (return_status);
+	return (return_status);
 }
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

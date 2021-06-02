@@ -59,8 +59,8 @@ typedef struct{
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-static const uint8_t SizeHv=1;
-static const uint8_t SizeVbat=1;
+static const uint8_t SizeHv=4;
+static const uint8_t SizeVbat=4;
 /**
  * START of Section BLE_DRIVER_CONTEXT
  */
