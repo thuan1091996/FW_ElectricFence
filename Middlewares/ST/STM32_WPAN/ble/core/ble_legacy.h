@@ -1,11 +1,11 @@
 /*****************************************************************************
  * @file    ble_legacy.h
- * @author  MCD Application Team
+ * @author  MCD
  * @brief   This file contains legacy definitions used for BLE.
  *****************************************************************************
  * @attention
  *
- * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
+ * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
  * All rights reserved.</center></h2>
  *
  * This software component is licensed by ST under Ultimate Liberty license
@@ -61,11 +61,13 @@ typedef PACKED(struct) _evt_le_meta_event
 /**
  * Vendor specific event for BLE core.
  */
-typedef PACKED(struct) _evt_blue_aci
+typedef PACKED(struct) _evt_blecore_aci
 {
   uint16_t ecode; /**< One of the BLE core event codes. */
   uint8_t  data[1];
-} evt_blue_aci;
+} evt_blecore_aci;
+
+#define evt_blue_aci evt_blecore_aci 
 
 
 /* BLE core event codes */
@@ -228,6 +230,26 @@ typedef	uint8_t	tBDAddr[6];
 #define ADV_INTERVAL_LOWEST_CONN                     0X0020
 #define ADV_INTERVAL_HIGHEST                         0X4000
 #define ADV_INTERVAL_LOWEST_NONCONN                  0X00A0
+
+
+/* ------------------------------------------------------------------------- */
+
+
+/*
+ * BLE_DEFAULT_MAX_ATT_MTU: maximum supported ATT MTU size.
+ */
+#define BLE_DEFAULT_MAX_ATT_MTU             158
+
+/*
+ * BLE_DEFAULT_MBLOCKS_COUNT: default memory blocks count
+ */
+#define BLE_DEFAULT_MBLOCKS_COUNT(n_link) \
+          BLE_MBLOCKS_CALC(BLE_DEFAULT_PREP_WRITE_LIST_SIZE, \
+                           BLE_DEFAULT_MAX_ATT_MTU, n_link)
+
+
+#define TOTAL_DEVICE_ID_DATA_SIZE 56
+
 
 /* ------------------------------------------------------------------------- */
 

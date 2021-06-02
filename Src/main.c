@@ -18,8 +18,6 @@
 #include "usart.h"
 #include "rf.h"
 #include "rtc.h"
-#include "app_entry.h"
-#include "app_common.h"
 #include "tim.h"
 #include "gpio.h"
 
@@ -220,7 +218,7 @@ int main(void)
 		ADC_ElecFenceTest();
 	}
 	#endif  /* End of ENDLESS_ADC_MEASURING */
-	Sys_Test();
+//	Sys_Test();
 
 	/************** Electrical fence testing ***************/
 	printf("Electrical fence testing... \n");
@@ -1039,11 +1037,11 @@ eTestStatus GPS_FWTest(void)
 	GPS_test = RET_FAIL;
 #if GPS_TEST
 	HAL_Delay(1000);
-	HAL_GPIO_WritePin(GPS_EN_GPIO_Port, GPS_EN_Pin, GPIO_PIN_SET);
+//	HAL_GPIO_WritePin(GPS_EN_GPIO_Port, GPS_EN_Pin, GPIO_PIN_SET);
 	HAL_Delay(3000);												//Wait for GPS supply power stable
 	if (GPS_Settings() == true) GPS_test = RET_OK;
 	else						GPS_test = RET_FAIL;
-	HAL_GPIO_WritePin(GPS_EN_GPIO_Port, GPS_EN_Pin, GPIO_PIN_RESET);
+//	HAL_GPIO_WritePin(GPS_EN_GPIO_Port, GPS_EN_Pin, GPIO_PIN_RESET);
 #else
 	printf("----- Skipped test ----- \n");
 #endif /*End GPS_TEST*/

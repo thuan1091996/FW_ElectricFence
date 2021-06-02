@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * File Name          : RF.c
-  * Description        : This file provides code for the configuration
-  *                      of the RF instances.
+  * @file    rf.c
+  * @brief   This file provides code for the configuration
+  *          of the RF instances.
   ******************************************************************************
   * @attention
   *
@@ -27,6 +27,17 @@
 /* RF init function */
 void MX_RF_Init(void)
 {
+
+  /* USER CODE BEGIN RF_Init 0 */
+
+  /* USER CODE END RF_Init 0 */
+
+  /* USER CODE BEGIN RF_Init 1 */
+
+  /* USER CODE END RF_Init 1 */
+  /* USER CODE BEGIN RF_Init 2 */
+
+  /* USER CODE END RF_Init 2 */
 
 }
 

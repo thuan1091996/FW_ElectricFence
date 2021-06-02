@@ -1,11 +1,11 @@
 /*****************************************************************************
  * @file    ble_const.h
- * @author  MCD Application Team
+ * @author  MCD
  * @brief   This file contains the definitions which are compiler dependent.
  *****************************************************************************
  * @attention
  *
- * <h2><center>&copy; Copyright (c) 2019 STMicroelectronics.
+ * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
  * All rights reserved.</center></h2>
  *
  * This software component is licensed by ST under Ultimate Liberty license
@@ -28,11 +28,17 @@
 
 
 /* Default BLE variant */
-#ifndef LL_ONLY
-#define LL_ONLY 0
+#ifndef BASIC_FEATURES
+#define BASIC_FEATURES 0
 #endif
 #ifndef SLAVE_ONLY
 #define SLAVE_ONLY 0
+#endif
+#ifndef LL_ONLY
+#define LL_ONLY 0
+#endif
+#ifndef BEACON_ONLY
+#define BEACON_ONLY 0
 #endif
 
 
@@ -114,6 +120,6 @@ extern int hci_send_req( struct hci_request* req, uint8_t async );
 #endif
 
 
-#endif /* ! BLE_CONST_H__ */
+#endif /* BLE_CONST_H__ */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE***/

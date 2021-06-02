@@ -1,12 +1,12 @@
 /******************************************************************************
  * @file    ble_types.h
- * @author  MCD Application Team
+ * @author  MCD
  * @brief   STM32WB BLE command/event types
  *          Auto-generated file: do not edit!
  ******************************************************************************
  * @attention
  *
- * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
+ * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
  * All rights reserved.</center></h2>
  *
  * This software component is licensed by ST under Ultimate Liberty license
@@ -58,8 +58,7 @@ typedef PACKED(struct)
    */
   uint8_t Peer_Address_Type;
   /**
-   * Public Device Address or Random Device Address of the device to be added
-   * to the white list.
+   * Public Device Address or Random Device Address.
    */
   uint8_t Peer_Address[6];
 } Whitelist_Entry_t;
@@ -75,8 +74,7 @@ typedef PACKED(struct)
    */
   uint8_t Address_Type;
   /**
-   * Public Device Address or Random Device Address of the device to be added
-   * to the white list.
+   * Public Device Address or Random Device Address.
    */
   uint8_t Address[6];
 } Bonded_Device_Entry_t;
@@ -945,6 +943,25 @@ typedef PACKED(struct)
 typedef PACKED(struct)
 {
   uint8_t Status;
+  uint8_t Min_TX_Power;
+  uint8_t Max_TX_Power;
+} hci_le_read_transmit_power_rp0;
+
+typedef PACKED(struct)
+{
+  uint8_t Peer_Identity_Address_Type;
+  uint8_t Peer_Identity_Address[6];
+  uint8_t Privacy_Mode;
+} hci_le_set_privacy_mode_cp0;
+
+typedef PACKED(struct)
+{
+  uint8_t Status;
+} hci_le_set_privacy_mode_rp0;
+
+typedef PACKED(struct)
+{
+  uint8_t Status;
   uint16_t Build_Number;
 } aci_hal_get_fw_build_number_rp0;
 
@@ -1056,6 +1073,16 @@ typedef PACKED(struct)
   uint8_t Allocated_For_RX;
   uint8_t Allocated_MBlocks;
 } aci_hal_get_pm_debug_info_rp0;
+
+typedef PACKED(struct)
+{
+  uint8_t Enable;
+} aci_hal_set_slave_latency_cp0;
+
+typedef PACKED(struct)
+{
+  uint8_t Status;
+} aci_hal_set_slave_latency_rp0;
 
 typedef PACKED(struct)
 {
@@ -2290,6 +2317,95 @@ typedef PACKED(struct)
 
 typedef PACKED(struct)
 {
+  uint16_t Connection_Handle;
+  uint16_t SPSM;
+  uint16_t MTU;
+  uint16_t MPS;
+  uint16_t Initial_Credits;
+  uint8_t Channel_Number;
+} aci_l2cap_coc_connect_cp0;
+
+typedef PACKED(struct)
+{
+  uint8_t Status;
+} aci_l2cap_coc_connect_rp0;
+
+typedef PACKED(struct)
+{
+  uint16_t Connection_Handle;
+  uint16_t MTU;
+  uint16_t MPS;
+  uint16_t Initial_Credits;
+  uint16_t Result;
+} aci_l2cap_coc_connect_confirm_cp0;
+
+typedef PACKED(struct)
+{
+  uint8_t Status;
+  uint8_t Channel_Number;
+  uint8_t Channel_Index_List[(BLE_EVT_MAX_PARAM_LEN - 3) - 2];
+} aci_l2cap_coc_connect_confirm_rp0;
+
+typedef PACKED(struct)
+{
+  uint16_t Connection_Handle;
+  uint16_t MTU;
+  uint16_t MPS;
+  uint8_t Channel_Number;
+  uint8_t Channel_Index_List[BLE_CMD_MAX_PARAM_LEN - 7];
+} aci_l2cap_coc_reconf_cp0;
+
+typedef PACKED(struct)
+{
+  uint8_t Status;
+} aci_l2cap_coc_reconf_rp0;
+
+typedef PACKED(struct)
+{
+  uint16_t Connection_Handle;
+  uint16_t Result;
+} aci_l2cap_coc_reconf_confirm_cp0;
+
+typedef PACKED(struct)
+{
+  uint8_t Status;
+} aci_l2cap_coc_reconf_confirm_rp0;
+
+typedef PACKED(struct)
+{
+  uint8_t Channel_Index;
+} aci_l2cap_coc_disconnect_cp0;
+
+typedef PACKED(struct)
+{
+  uint8_t Status;
+} aci_l2cap_coc_disconnect_rp0;
+
+typedef PACKED(struct)
+{
+  uint8_t Channel_Index;
+  uint16_t Credits;
+} aci_l2cap_coc_flow_control_cp0;
+
+typedef PACKED(struct)
+{
+  uint8_t Status;
+} aci_l2cap_coc_flow_control_rp0;
+
+typedef PACKED(struct)
+{
+  uint8_t Channel_Index;
+  uint16_t Length;
+  uint8_t Data[BLE_CMD_MAX_PARAM_LEN - 3];
+} aci_l2cap_coc_tx_data_cp0;
+
+typedef PACKED(struct)
+{
+  uint8_t Status;
+} aci_l2cap_coc_tx_data_rp0;
+
+typedef PACKED(struct)
+{
   uint8_t Status;
   uint16_t Connection_Handle;
   uint8_t Reason;
@@ -2515,6 +2631,60 @@ typedef PACKED(struct)
   uint8_t Data_Length;
   uint8_t Data[(BLE_EVT_MAX_PARAM_LEN - 2) - 6];
 } aci_l2cap_command_reject_event_rp0;
+
+typedef PACKED(struct)
+{
+  uint16_t Connection_Handle;
+  uint16_t SPSM;
+  uint16_t MTU;
+  uint16_t MPS;
+  uint16_t Initial_Credits;
+  uint8_t Channel_Number;
+} aci_l2cap_coc_connect_event_rp0;
+
+typedef PACKED(struct)
+{
+  uint16_t Connection_Handle;
+  uint16_t MTU;
+  uint16_t MPS;
+  uint16_t Initial_Credits;
+  uint16_t Result;
+  uint8_t Channel_Number;
+  uint8_t Channel_Index_List[(BLE_EVT_MAX_PARAM_LEN - 2) - 11];
+} aci_l2cap_coc_connect_confirm_event_rp0;
+
+typedef PACKED(struct)
+{
+  uint16_t Connection_Handle;
+  uint16_t MTU;
+  uint16_t MPS;
+  uint8_t Channel_Number;
+  uint8_t Channel_Index_List[(BLE_EVT_MAX_PARAM_LEN - 2) - 7];
+} aci_l2cap_coc_reconf_event_rp0;
+
+typedef PACKED(struct)
+{
+  uint16_t Connection_Handle;
+  uint16_t Result;
+} aci_l2cap_coc_reconf_confirm_event_rp0;
+
+typedef PACKED(struct)
+{
+  uint8_t Channel_Index;
+} aci_l2cap_coc_disconnect_event_rp0;
+
+typedef PACKED(struct)
+{
+  uint8_t Channel_Index;
+  uint16_t Credits;
+} aci_l2cap_coc_flow_control_event_rp0;
+
+typedef PACKED(struct)
+{
+  uint8_t Channel_Index;
+  uint16_t Length;
+  uint8_t Data[(BLE_EVT_MAX_PARAM_LEN - 2) - 3];
+} aci_l2cap_coc_rx_data_event_rp0;
 
 typedef PACKED(struct)
 {

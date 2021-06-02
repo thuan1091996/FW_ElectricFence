@@ -1,3 +1,4 @@
+/* USER CODE BEGIN Header */
 /**
  ******************************************************************************
   * File Name          : ble_dbg_conf.h
@@ -16,6 +17,7 @@
   *
   ******************************************************************************
   */
+/* USER CODE END Header */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __BLE_DBG_CONF_H
@@ -25,13 +27,13 @@
  * Enable or Disable traces from BLE
  */
 
-#define BLE_DBG_APP_EN             0
+#define BLE_DBG_APP_EN             1
 #define BLE_DBG_DIS_EN             0
 #define BLE_DBG_HRS_EN             0
 #define BLE_DBG_SVCCTL_EN          0
 #define BLE_DBG_BLS_EN             0
 #define BLE_DBG_HTS_EN             0
-#define BLE_DBG_P2P_STM_EN         0
+#define BLE_DBG_P2P_STM_EN         1
 
 /**
  * Macro definition

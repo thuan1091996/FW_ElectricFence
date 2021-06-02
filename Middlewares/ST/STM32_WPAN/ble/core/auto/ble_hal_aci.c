@@ -1,12 +1,12 @@
 /******************************************************************************
  * @file    ble_hal_aci.c
- * @author  MCD Application Team
+ * @author  MCD
  * @brief   STM32WB BLE API (hal_aci)
  *          Auto-generated file: do not edit!
  ******************************************************************************
  * @attention
  *
- * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
+ * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
  * All rights reserved.</center></h2>
  *
  * This software component is licensed by ST under Ultimate Liberty license
@@ -295,6 +295,27 @@ tBleStatus aci_hal_get_pm_debug_info( uint8_t* Allocated_For_TX,
   *Allocated_For_RX = resp.Allocated_For_RX;
   *Allocated_MBlocks = resp.Allocated_MBlocks;
   return BLE_STATUS_SUCCESS;
+}
+
+tBleStatus aci_hal_set_slave_latency( uint8_t Enable )
+{
+  struct hci_request rq;
+  uint8_t cmd_buffer[BLE_CMD_MAX_PARAM_LEN];
+  aci_hal_set_slave_latency_cp0 *cp0 = (aci_hal_set_slave_latency_cp0*)(cmd_buffer);
+  tBleStatus status = 0;
+  int index_input = 0;
+  cp0->Enable = Enable;
+  index_input += 1;
+  Osal_MemSet( &rq, 0, sizeof(rq) );
+  rq.ogf = 0x3f;
+  rq.ocf = 0x020;
+  rq.cparam = cmd_buffer;
+  rq.clen = index_input;
+  rq.rparam = &status;
+  rq.rlen = 1;
+  if ( hci_send_req(&rq, FALSE) < 0 )
+    return BLE_STATUS_TIMEOUT;
+  return status;
 }
 
 tBleStatus aci_hal_read_radio_reg( uint8_t Register_Address,

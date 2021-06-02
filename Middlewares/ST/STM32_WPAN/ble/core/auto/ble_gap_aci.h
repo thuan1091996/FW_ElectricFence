@@ -1,12 +1,12 @@
 /******************************************************************************
  * @file    ble_gap_aci.h
- * @author  MCD Application Team
+ * @author  MCD
  * @brief   STM32WB BLE API (gap_aci)
  *          Auto-generated file: do not edit!
  ******************************************************************************
  * @attention
  *
- * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
+ * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
  * All rights reserved.</center></h2>
  *
  * This software component is licensed by ST under Ultimate Liberty license
@@ -34,10 +34,10 @@ tBleStatus aci_gap_set_non_discoverable( void );
 
 /**
  * @brief ACI_GAP_SET_LIMITED_DISCOVERABLE
- * Put the device in limited discoverable mode (as defined in Bluetooth
- * Specification v.5.0, Vol. 3, Part C, section 9.2.3). The device will be
- * discoverable for maximum period of TGAP (lim_adv_timeout) = 180 seconds
- * (from errata). The advertising can be disabled at any time by issuing
+ * Put the device in limited discoverable mode (as defined in Bluetooth spec.
+ * v.5.2 [Vol 3, Part C, 9.2.3]). The device will be discoverable for maximum
+ * period of TGAP (lim_adv_timeout) = 180 seconds (from errata). The
+ * advertising can be disabled at any time by issuing
  * ACI_GAP_SET_NON_DISCOVERABLE command.
  * The Adv_Interval_Min and Adv_Interval_Max parameters are optional. If both
  * are set to 0, the GAP will use default values for adv intervals for limited
@@ -90,7 +90,6 @@ tBleStatus aci_gap_set_non_discoverable( void );
  *        If there is no service to be advertised, set this field to 0x00.
  * @param Service_Uuid_List This is the list of the UUIDs as defined in Volume
  *        3, Section 11 of GAP Specification. First byte is the AD Type.
- *        See also Supplement to the Bluetooth Core 5.0 specification.
  * @param Slave_Conn_Interval_Min Slave connection interval minimum value
  *        suggested by Peripheral.
  *        If Slave_Conn_Interval_Min and Slave_Conn_Interval_Max are not
@@ -129,12 +128,11 @@ tBleStatus aci_gap_set_limited_discoverable( uint8_t Advertising_Type,
 
 /**
  * @brief ACI_GAP_SET_DISCOVERABLE
- * Put the device in general discoverable mode (as defined in Bluetooth
- * Specification v.5.0, Vol. 3, Part C, section 9.2.4). The device will be
- * discoverable until the host issues the ACI_GAP_SET_NON_DISCOVERABLE command.
- * The Adv_Interval_Min and Adv_Interval_Max parameters are optional. If both
- * are set to 0, the GAP uses the default values for adv intervals for general
- * discoverable mode.
+ * Put the device in general discoverable mode (as defined in Bluetooth spec.
+ * v.5.2 [Vol 3, Part C, 9.2.4]). The device will be discoverable until the
+ * host issues the ACI_GAP_SET_NON_DISCOVERABLE command. The Adv_Interval_Min
+ * and Adv_Interval_Max parameters are optional. If both are set to 0, the GAP
+ * uses the default values for adv intervals for general discoverable mode.
  * When using connectable undirected advertising events:
  * - Adv_Interval_Min = 30 ms
  * - Adv_Interval_Max = 60 ms
@@ -189,7 +187,6 @@ tBleStatus aci_gap_set_limited_discoverable( uint8_t Advertising_Type,
  *        If there is no service to be advertised, set this field to 0x00.
  * @param Service_Uuid_List This is the list of the UUIDs as defined in Volume
  *        3, Section 11 of GAP Specification. First byte is the AD Type.
- *        See also Supplement to the Bluetooth Core 5.0 specification.
  * @param Slave_Conn_Interval_Min Slave connection interval minimum value
  *        suggested by Peripheral.
  *        If Slave_Conn_Interval_Min and Slave_Conn_Interval_Max are not
@@ -228,12 +225,12 @@ tBleStatus aci_gap_set_discoverable( uint8_t Advertising_Type,
 
 /**
  * @brief ACI_GAP_SET_DIRECT_CONNECTABLE
- * Set the device in direct connectable mode (as defined in Bluetooth
- * Specification v.5.0, Vol. 3, Part C, section 9.3.3). Device uses direct
- * connectable mode to advertise using High Duty cycle advertisement events or
- * Low Duty cycle advertisement events and the address as either what is
- * specified in the Own Address Type parameter. The command specifies the type
- * of the advertising used.
+ * Set the device in direct connectable mode (as defined in Bluetooth spec.
+ * v.5.2 [Vol 3, Part C, 9.3.3]). Device uses direct connectable mode to
+ * advertise using High Duty cycle advertisement events or Low Duty cycle
+ * advertisement events and the address as either what is specified in the Own
+ * Address Type parameter. The command specifies the type of the advertising
+ * used.
  * If the privacy is enabled, the Type parameter in reconnection address is
  * used for advertising, otherwise the address of the type specified in
  * OwnAddrType is used.
@@ -266,11 +263,15 @@ tBleStatus aci_gap_set_discoverable( uint8_t Advertising_Type,
  * @param Advertising_Interval_Min Minimum advertising interval.
  *        Time = N * 0.625 msec.
  *        Values:
- *        - 0x0020 (20.000 ms)  ... 0x4000 (10240.000 ms)
+ *        - 0x0006 (3.750 ms) : for High Duty Cycle Directed Advertising
+ *        - 0x0020 (20.000 ms)  ... 0x4000 (10240.000 ms) : for Low Duty Cycle
+ *          Directed Advertising
  * @param Advertising_Interval_Max Maximum advertising interval.
  *        Time = N * 0.625 msec.
  *        Values:
- *        - 0x0020 (20.000 ms)  ... 0x4000 (10240.000 ms)
+ *        - 0x0006 (3.750 ms) : for High Duty Cycle Directed Advertising
+ *        - 0x0020 (20.000 ms)  ... 0x4000 (10240.000 ms) : for Low Duty Cycle
+ *          Directed Advertising
  * @return Value indicating success or error code.
  */
 tBleStatus aci_gap_set_direct_connectable( uint8_t Own_Address_Type,
@@ -361,7 +362,7 @@ tBleStatus aci_gap_set_authentication_requirement( uint8_t Bonding_Mode,
  * given when connected to a device if authorization is required to access
  * services which require authorization.
  * 
- * @param Connection_Handle Connection handle for which the command is given.
+ * @param Connection_Handle Connection handle for which the command applies.
  *        Values:
  *        - 0x0000 ... 0x0EFF
  * @param Authorization_Enable Enable the authorization in the device and when
@@ -384,7 +385,7 @@ tBleStatus aci_gap_set_authorization_requirement( uint16_t Connection_Handle,
  * ACI_GAP_PASS_KEY_REQ_EVENT event. The command parameter contains the pass
  * key which will be used during the pairing process.
  * 
- * @param Connection_Handle Connection handle for which the command is given.
+ * @param Connection_Handle Connection handle for which the command applies.
  *        Values:
  *        - 0x0000 ... 0x0EFF
  * @param Pass_Key Pass key that will be used during the pairing process.
@@ -401,7 +402,7 @@ tBleStatus aci_gap_pass_key_resp( uint16_t Connection_Handle,
  * Authorize a device to access attributes. This command should be send by the
  * host in response to ACI_GAP_AUTHORIZATION_REQ_EVENT event.
  * 
- * @param Connection_Handle Connection handle for which the command is given.
+ * @param Connection_Handle Connection handle for which the command applies.
  *        Values:
  *        - 0x0000 ... 0x0EFF
  * @param Authorize Authorization response.
@@ -518,7 +519,7 @@ tBleStatus aci_gap_set_undirected_connectable( uint16_t Advertising_Interval_Min
  * requirements of the slave. The master may encrypt the link, initiate the
  * pairing procedure, or reject the request.
  * 
- * @param Connection_Handle Connection handle for which the command is given.
+ * @param Connection_Handle Connection handle for which the command applies.
  *        Values:
  *        - 0x0000 ... 0x0EFF
  * @return Value indicating success or error code.
@@ -545,8 +546,7 @@ tBleStatus aci_gap_update_adv_data( uint8_t AdvDataLen,
  * This command can be used to delete the specified AD type from the
  * advertisement data if present.
  * 
- * @param ADType One of the AD types like in Bluetooth specification (see
- *        volume 3, Part C, 11.1)
+ * @param ADType One of the AD types as in Bluetooth spec. [Vol 3, Part C, 11].
  * @return Value indicating success or error code.
  */
 tBleStatus aci_gap_delete_ad_type( uint8_t ADType );
@@ -555,7 +555,7 @@ tBleStatus aci_gap_delete_ad_type( uint8_t ADType );
  * @brief ACI_GAP_GET_SECURITY_LEVEL
  * This command can be used to get the current security settings of the device.
  * 
- * @param Connection_Handle Connection handle for which the command is given.
+ * @param Connection_Handle Connection handle for which the command applies.
  *        Values:
  *        - 0x0000 ... 0x0EFF
  * @param[out] Security_Mode Security mode.
@@ -613,7 +613,7 @@ tBleStatus aci_gap_configure_whitelist( void );
  * HCI_DISCONNECTION_COMPLETE_EVENT event is generated when the link is
  * disconnected.
  * 
- * @param Connection_Handle Connection handle for which the command is given.
+ * @param Connection_Handle Connection handle for which the command applies.
  *        Values:
  *        - 0x0000 ... 0x0EFF
  * @param Reason The reason for ending the connection.
@@ -646,7 +646,7 @@ tBleStatus aci_gap_clear_security_db( void );
  * successfully. If this command is not given on receiving the event, the
  * bonding procedure will timeout.
  * 
- * @param Connection_Handle Connection handle for which the command is given.
+ * @param Connection_Handle Connection handle for which the command applies.
  *        Values:
  *        - 0x0000 ... 0x0EFF
  * @return Value indicating success or error code.
@@ -828,13 +828,13 @@ tBleStatus aci_gap_start_name_discovery_proc( uint16_t LE_Scan_Interval,
 /**
  * @brief ACI_GAP_START_AUTO_CONNECTION_ESTABLISH_PROC
  * Start the auto connection establishment procedure. The devices specified are
- * added to the white list of the controller and a LE_Create_Connection call
+ * added to the whitelist of the controller and a LE_Create_Connection call
  * will be made to the controller by GAP with the initiator filter policy set
  * to "use whitelist to determine which advertiser to connect to". When a
  * command is issued to terminate the procedure by upper layer, a
  * LE_Create_Connection_Cancel call will be made to the controller by GAP.
  * The procedure is terminated when either a connection is successfully
- * established with one of the specified devices in the white list or the
+ * established with one of the specified devices in the whitelist or the
  * procedure is explicitly terminated by issuing the command
  * ACI_GAP_TERMINATE_GAP_PROC with the procedure code set to 0x08. A
  * ACI_GAP_PROC_COMPLETE_EVENT event is returned with the procedure code set to
@@ -996,7 +996,7 @@ tBleStatus aci_gap_start_general_connection_establish_proc( uint8_t LE_Scan_Type
 /**
  * @brief ACI_GAP_START_SELECTIVE_CONNECTION_ESTABLISH_PROC
  * Start a selective connection establishment procedure. The GAP adds the
- * specified device addresses into white list and enables scanning in the
+ * specified device addresses into whitelist and enables scanning in the
  * controller with the scanner filter policy set to "accept packets only from
  * devices in whitelist". All the devices found are sent to the upper layer by
  * the event HCI_LE_ADVERTISING_REPORT_EVENT. The upper layer then has to
@@ -1167,7 +1167,7 @@ tBleStatus aci_gap_create_connection( uint16_t LE_Scan_Interval,
 
 /**
  * @brief ACI_GAP_TERMINATE_GAP_PROC
- * Terminate the specified GATT procedure. An ACI_GAP_PROC_COMPLETE_EVENT event
+ * Terminate the specified GAP procedure. An ACI_GAP_PROC_COMPLETE_EVENT event
  * is returned with the procedure code set to the corresponding procedure.
  * 
  * @param Procedure_Code GAP procedure bitmap.
@@ -1192,7 +1192,7 @@ tBleStatus aci_gap_terminate_gap_proc( uint8_t Procedure_Code );
  * On completion of the procedure, an HCI_LE_CONNECTION_UPDATE_COMPLETE_EVENT
  * event is returned to the upper layer.
  * 
- * @param Connection_Handle Connection handle for which the command is given.
+ * @param Connection_Handle Connection handle for which the command applies.
  *        Values:
  *        - 0x0000 ... 0x0EFF
  * @param Conn_Interval_Min Minimum value for the connection event interval.
@@ -1244,7 +1244,7 @@ tBleStatus aci_gap_start_connection_update( uint16_t Connection_Handle,
  * A ACI_GAP_PAIRING_COMPLETE_EVENT event is returned after the pairing process
  * is completed.
  * 
- * @param Connection_Handle Connection handle for which the command is given.
+ * @param Connection_Handle Connection handle for which the command applies.
  *        Values:
  *        - 0x0000 ... 0x0EFF
  * @param Force_Rebond If 1, Pairing request will be sent even if the device
@@ -1321,8 +1321,7 @@ tBleStatus aci_gap_set_broadcast_mode( uint16_t Advertising_Interval_Min,
  * @brief ACI_GAP_START_OBSERVATION_PROC
  * Starts an Observation procedure, when the device is in Observer Role. The
  * host enables scanning in the controller. The advertising reports are sent to
- * the upper layer using standard LE Advertising Report Event. (See Bluetooth
- * Core v5.0, Vol. 2, part E, Ch. 7.7.65.2, LE Advertising Report Event).
+ * the upper layer using standard LE Advertising Report Event.
  * If controller privacy is enabled and the peer device (advertiser) is in the
  * resolving list then the link layer will generate a RPA, if it is not then
  * the RPA/NRPA generated by the Host will be used.
@@ -1406,11 +1405,12 @@ tBleStatus aci_gap_get_bonded_devices( uint8_t* Num_of_Addresses,
  * command, is bonded. If the device is using a resolvable private address and
  * it has been bonded, then the command will return BLE_STATUS_SUCCESS.
  * 
- * @param Peer_Address_Type Address type.
+ * @param Peer_Address_Type Identity address type.
  *        Values:
- *        - 0x00: Public Device Address
- *        - 0x01: Random Device Address
- * @param Peer_Address Address used by the peer device while advertising
+ *        - 0x00: Public Identity Address
+ *        - 0x01: Random (static) Identity Address
+ * @param Peer_Address Public or Random (static) Identity address of the peer
+ *        device
  * @return Value indicating success or error code.
  */
 tBleStatus aci_gap_is_device_bonded( uint8_t Peer_Address_Type,
@@ -1421,7 +1421,7 @@ tBleStatus aci_gap_is_device_bonded( uint8_t Peer_Address_Type,
  * This command allows the User to validate/confirm or not the Numeric
  * Comparison value showed through the ACI_GAP_Numeric_Comparison_Value_Event.
  * 
- * @param Connection_Handle Connection handle for which the command is given.
+ * @param Connection_Handle Connection handle for which the command applies.
  *        Values:
  *        - 0x0000 ... 0x0EFF
  * @param Confirm_Yes_No 0 : The Numeric Values showed on both local and peer
@@ -1441,7 +1441,7 @@ tBleStatus aci_gap_numeric_comparison_value_confirm_yesno( uint16_t Connection_H
  * This command permits to signal to the Stack the input type detected during
  * Passkey input.
  * 
- * @param Connection_Handle Connection handle for which the command is given.
+ * @param Connection_Handle Connection handle for which the command applies.
  *        Values:
  *        - 0x0000 ... 0x0EFF
  * @param Input_Type Passkey input type detected
@@ -1464,8 +1464,8 @@ tBleStatus aci_gap_passkey_input( uint16_t Connection_Handle,
  * @param OOB_Data_Type OOB Data type
  *        Values:
  *        - 0x00: TK (LP v.4.1)
- *        - 0x01: Random (SC v.4.2)
- *        - 0x02: Confirm (SC v.4.2)
+ *        - 0x01: Random (SC)
+ *        - 0x02: Confirm (SC)
  * @param[out] Address_Type Identity address type.
  *        Values:
  *        - 0x00: Public Identity Address
@@ -1499,8 +1499,8 @@ tBleStatus aci_gap_get_oob_data( uint8_t OOB_Data_Type,
  * @param OOB_Data_Type OOB Data type
  *        Values:
  *        - 0x00: TK (LP v.4.1)
- *        - 0x01: Random (SC v.4.2)
- *        - 0x02: Confirm (SC v.4.2)
+ *        - 0x01: Random (SC)
+ *        - 0x02: Confirm (SC)
  * @param OOB_Data_Len Length of OOB Data
  * @param OOB_Data Pairing Data received through OOB from remote device
  * @return Value indicating success or error code.
