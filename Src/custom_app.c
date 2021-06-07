@@ -4,16 +4,16 @@
  * File Name          : custom_app.c
  * Description        : Custom Example Application (Server)
  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under Ultimate Liberty license
-  * SLA0044, the "License"; You may not use this file except in compliance with
-  * the License. You may obtain a copy of the License at:
-  *                             www.st.com/SLA0044
-  *
+ * @attention
+ *
+ * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
+ * All rights reserved.</center></h2>
+ *
+ * This software component is licensed by ST under Ultimate Liberty license
+ * SLA0044, the "License"; You may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at:
+ *                             www.st.com/SLA0044
+ *
  ******************************************************************************
  */
 /* USER CODE END Header */
@@ -104,13 +104,13 @@ void Custom_STM_App_Notification(Custom_STM_App_Notification_evt_t *pNotificatio
   /* ELECTRICFENCE */
     case CUSTOM_STM_HV_READ_EVT:
 /* USER CODE BEGIN CUSTOM_STM_HV_READ_EVT */
-
+		APP_DBG_MSG("\r\n\r** HIGH VOLTAGE NOTIFY ENABLED \n");
 /* USER CODE END CUSTOM_STM_HV_READ_EVT */
       break;
 
     case CUSTOM_STM_HV_NOTIFY_ENABLED_EVT:
 /* USER CODE BEGIN CUSTOM_STM_HV_NOTIFY_ENABLED_EVT */
-
+		APP_DBG_MSG("\r\n\r** HIGH VOLTAGE NOTIFY DISABLED \n");
 /* USER CODE END CUSTOM_STM_HV_NOTIFY_ENABLED_EVT */
       break;
 
@@ -124,12 +124,6 @@ void Custom_STM_App_Notification(Custom_STM_App_Notification_evt_t *pNotificatio
 /* USER CODE BEGIN CUSTOM_STM_VBAT_READ_EVT */
 
 /* USER CODE END CUSTOM_STM_VBAT_READ_EVT */
-      break;
-
-    case CUSTOM_STM_VBAT_WRITE_NO_RESP_EVT:
-/* USER CODE BEGIN CUSTOM_STM_VBAT_WRITE_NO_RESP_EVT */
-
-/* USER CODE END CUSTOM_STM_VBAT_WRITE_NO_RESP_EVT */
       break;
 
     case CUSTOM_STM_VBAT_NOTIFY_ENABLED_EVT:
@@ -169,13 +163,20 @@ void Custom_APP_Notification(Custom_App_ConnHandle_Not_evt_t *pNotification)
 /* USER CODE END P2PS_CUSTOM_Notification_Custom_Evt_Opcode */
   case CUSTOM_CONN_HANDLE_EVT :
 /* USER CODE BEGIN CUSTOM_CONN_HANDLE_EVT */
-
+		HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_SET);
+		APP_DBG_MSG("\r\n\r** COMPLETE CONNECTED EVENT WITH CLIENT \n");
 /* USER CODE END CUSTOM_CONN_HANDLE_EVT */
     break;
 
     case CUSTOM_DISCON_HANDLE_EVT :
 /* USER CODE BEGIN CUSTOM_DISCON_HANDLE_EVT */
-
+		APP_DBG_MSG("\r\n\r** DISCONNECTION EVENT WITH CLIENT \n");
+		for (uint8_t count = 0; count < 10; ++count)	/* Blink then shut down Buzzer */
+		{
+			HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
+			HAL_Delay(100);
+		}
+		HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
 /* USER CODE END CUSTOM_DISCON_HANDLE_EVT */
     break;
 

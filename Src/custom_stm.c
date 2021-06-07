@@ -123,7 +123,7 @@ static SVCCTL_EvtAckStatus_t Custom_STM_Event_Handler(void *Event)
   hci_event_pckt *event_pckt;
   evt_blecore_aci *blecore_evt;
 /* USER CODE BEGIN Custom_STM_Event_Handler_1 */
-
+	aci_gatt_attribute_modified_event_rp0    * attribute_modified;
 /* USER CODE END Custom_STM_Event_Handler_1 */
 
   return_value = SVCCTL_EvtNotAck;
@@ -138,7 +138,50 @@ static SVCCTL_EvtAckStatus_t Custom_STM_Event_Handler(void *Event)
 
         case ACI_GATT_ATTRIBUTE_MODIFIED_VSEVT_CODE:
           /* USER CODE BEGIN EVT_BLUE_GATT_ATTRIBUTE_MODIFIED */
+			{
+				attribute_modified = (aci_gatt_attribute_modified_event_rp0*)blecore_evt->data;
+				if(attribute_modified->Attr_Handle == (CustomContext.CustomHvHdle + 2))	/* High voltage descriptor changed */
+				{
+					/**
+					 * Descriptor handle
+					 */
+					return_value = SVCCTL_EvtAckFlowEnable;
+					/**
+					 * Notify to application
+					 */
+					if(attribute_modified->Attr_Data[0] & COMSVC_Notification)
+					{
+//						Notification.Template_Evt_Opcode = TEMPLATE_STM_NOTIFY_ENABLED_EVT;
+//						TEMPLATE_STM_App_Notification(&Notification);
+					}
+					else
+					{
+//						Notification.Template_Evt_Opcode = TEMPLATE_STM_NOTIFY_DISABLED_EVT;
+//						TEMPLATE_STM_App_Notification(&Notification);
+					}
+				}
+				else if(attribute_modified->Attr_Handle == (CustomContext.CustomVbatHdle + 2))	/* VBAT descriptor changed */
+				{
+					/**
+					 * Descriptor handle
+					 */
+					return_value = SVCCTL_EvtAckFlowEnable;
+					/**
+					 * Notify to application
+					 */
+					if(attribute_modified->Attr_Data[0] & COMSVC_Notification)
+					{
+//						Notification.Template_Evt_Opcode = TEMPLATE_STM_NOTIFY_ENABLED_EVT;
+//						TEMPLATE_STM_App_Notification(&Notification);
+					}
+					else
+					{
+//						Notification.Template_Evt_Opcode = TEMPLATE_STM_NOTIFY_DISABLED_EVT;
+//						TEMPLATE_STM_App_Notification(&Notification);
+					}
 
+				}
+			}
           /* USER CODE END EVT_BLUE_GATT_ATTRIBUTE_MODIFIED */
           break;
         case ACI_GATT_READ_PERMIT_REQ_VSEVT_CODE :
@@ -207,16 +250,14 @@ void SVCCTL_InitCustomSvc(void)
      *                                2 for BATTERY +
      *                                1 for HVOLTAGE configuration descriptor +
      *                                1 for BATTERY configuration descriptor +
-     *                                1 for HVOLTAGE broadcast property +
-     *                                1 for BATTERY broadcast property +
-     *                              = 9
+     *                              = 7
      */
 
     COPY_ELECTRICFENCE_UUID(uuid.Char_UUID_128);
     aci_gatt_add_service(UUID_TYPE_128,
                       (Service_UUID_t *) &uuid,
                       PRIMARY_SERVICE,
-                      9,
+                      7,
                       &(CustomContext.CustomElecfenceHdle));
 
     /**
@@ -226,9 +267,9 @@ void SVCCTL_InitCustomSvc(void)
     aci_gatt_add_char(CustomContext.CustomElecfenceHdle,
                       UUID_TYPE_128, &uuid,
                       SizeHv,
-                      CHAR_PROP_BROADCAST | CHAR_PROP_READ | CHAR_PROP_NOTIFY,
+                      CHAR_PROP_READ | CHAR_PROP_NOTIFY,
                       ATTR_PERMISSION_NONE,
-                      GATT_NOTIFY_ATTRIBUTE_WRITE | GATT_NOTIFY_WRITE_REQ_AND_WAIT_FOR_APPL_RESP | GATT_NOTIFY_READ_REQ_AND_WAIT_FOR_APPL_RESP,
+                      GATT_NOTIFY_ATTRIBUTE_WRITE,
                       0x10,
                       CHAR_VALUE_LEN_CONSTANT,
                       &(CustomContext.CustomHvHdle));
@@ -239,9 +280,9 @@ void SVCCTL_InitCustomSvc(void)
     aci_gatt_add_char(CustomContext.CustomElecfenceHdle,
                       UUID_TYPE_128, &uuid,
                       SizeVbat,
-                      CHAR_PROP_BROADCAST | CHAR_PROP_READ | CHAR_PROP_WRITE_WITHOUT_RESP | CHAR_PROP_NOTIFY,
+                      CHAR_PROP_READ | CHAR_PROP_NOTIFY,
                       ATTR_PERMISSION_NONE,
-                      GATT_NOTIFY_ATTRIBUTE_WRITE | GATT_NOTIFY_WRITE_REQ_AND_WAIT_FOR_APPL_RESP | GATT_NOTIFY_READ_REQ_AND_WAIT_FOR_APPL_RESP,
+                      GATT_NOTIFY_ATTRIBUTE_WRITE,
                       0x10,
                       CHAR_VALUE_LEN_CONSTANT,
                       &(CustomContext.CustomVbatHdle));
@@ -259,47 +300,47 @@ void SVCCTL_InitCustomSvc(void)
  * @param  Service_Instance: Instance of the service to which the characteristic belongs
  *
  */
-tBleStatus Custom_STM_App_Update_Char(Custom_STM_Char_Opcode_t CharOpcode, uint8_t *pPayload)
+void Custom_STM_App_Update_Char(Custom_STM_Char_Opcode_t CharOpcode, uint8_t *pPayload)
 {
-  tBleStatus result = BLE_STATUS_INVALID_PARAMS;
-/* USER CODE BEGIN Custom_STM_App_Update_Char_1 */
+	tBleStatus result = BLE_STATUS_INVALID_PARAMS;
+	/* USER CODE BEGIN Custom_STM_App_Update_Char_1 */
 
-/* USER CODE END Custom_STM_App_Update_Char_1 */
+	/* USER CODE END Custom_STM_App_Update_Char_1 */
 
-  switch(CharOpcode)
-  {
+	switch(CharOpcode)
+	{
 
-    case CUSTOM_STM_HV:
-      result = aci_gatt_update_char_value(CustomContext.CustomElecfenceHdle,
-                            CustomContext.CustomHvHdle,
-                            0, /* charValOffset */
-                            SizeHv, /* charValueLen */
-                            (uint8_t *)  pPayload);
-    /* USER CODE BEGIN CUSTOM_STM_HV*/
+	case CUSTOM_STM_HV:
+		result = aci_gatt_update_char_value(CustomContext.CustomElecfenceHdle,
+				CustomContext.CustomHvHdle,
+				0, /* charValOffset */
+				SizeHv, /* charValueLen */
+				(uint8_t *)  pPayload);
+		/* USER CODE BEGIN CUSTOM_STM_HV*/
 
-    /* USER CODE END CUSTOM_STM_HV*/
-      break;
+		/* USER CODE END CUSTOM_STM_HV*/
+		break;
 
-    case CUSTOM_STM_VBAT:
-      result = aci_gatt_update_char_value(CustomContext.CustomElecfenceHdle,
-                            CustomContext.CustomVbatHdle,
-                            0, /* charValOffset */
-                            SizeVbat, /* charValueLen */
-                            (uint8_t *)  pPayload);
-    /* USER CODE BEGIN CUSTOM_STM_VBAT*/
+	case CUSTOM_STM_VBAT:
+		result = aci_gatt_update_char_value(CustomContext.CustomElecfenceHdle,
+				CustomContext.CustomVbatHdle,
+				0, /* charValOffset */
+				SizeVbat, /* charValueLen */
+				(uint8_t *)  pPayload);
+		/* USER CODE BEGIN CUSTOM_STM_VBAT*/
 
-    /* USER CODE END CUSTOM_STM_VBAT*/
-      break;
+		/* USER CODE END CUSTOM_STM_VBAT*/
+		break;
 
-    default:
-      break;
-  }
+	default:
+		break;
+	}
 
-/* USER CODE BEGIN Custom_STM_App_Update_Char_2 */
+	/* USER CODE BEGIN Custom_STM_App_Update_Char_2 */
 
-/* USER CODE END Custom_STM_App_Update_Char_2 */
+	/* USER CODE END Custom_STM_App_Update_Char_2 */
 
-  return result;
+	return result;
 }
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

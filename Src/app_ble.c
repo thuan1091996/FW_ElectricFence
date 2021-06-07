@@ -564,12 +564,6 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
       Custom_APP_Notification(&handleNotification);
       /* USER CODE BEGIN EVT_DISCONN_COMPLETE */
       APP_DBG_MSG("\r\n\r** DISCONNECTION EVENT WITH CLIENT \n");
-      for (uint8_t count = 0; count < 10; ++count)	/* Blink then shut down Buzzer */
-		{
-      	HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
-      	HAL_Delay(100);
-		}
-      HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
       /* USER CODE END EVT_DISCONN_COMPLETE */
     }
 
@@ -654,8 +648,6 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
           handleNotification.ConnectionHandle = BleApplicationContext.BleApplicationContext_legacy.connectionHandle;
           Custom_APP_Notification(&handleNotification);
           /* USER CODE BEGIN HCI_EVT_LE_CONN_COMPLETE */
-          HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_SET);
-          APP_DBG_MSG("\r\n\r** COMPLETE CONNECTED EVENT WITH CLIENT \n");
           /* USER CODE END HCI_EVT_LE_CONN_COMPLETE */
         }
         break; /* HCI_LE_CONNECTION_COMPLETE_SUBEVT_CODE */

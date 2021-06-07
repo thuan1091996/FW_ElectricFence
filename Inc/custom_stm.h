@@ -48,7 +48,6 @@ typedef enum
   CUSTOM_STM_HV_NOTIFY_DISABLED_EVT,
   /* BATTERY */
   CUSTOM_STM_VBAT_READ_EVT,
-  CUSTOM_STM_VBAT_WRITE_NO_RESP_EVT,
   CUSTOM_STM_VBAT_NOTIFY_ENABLED_EVT,
   CUSTOM_STM_VBAT_NOTIFY_DISABLED_EVT,
 
@@ -91,7 +90,7 @@ typedef struct
 /* Exported functions ------------------------------------------------------- */
 void SVCCTL_InitCustomSvc( void );
 void Custom_STM_App_Notification(Custom_STM_App_Notification_evt_t *pNotification);
-tBleStatus Custom_STM_App_Update_Char(Custom_STM_Char_Opcode_t CharOpcode,  uint8_t *pPayload);
+void Custom_STM_App_Update_Char(Custom_STM_Char_Opcode_t CharOpcode,  uint8_t *pPayload);
 /* USER CODE BEGIN EF */
 
 /* USER CODE END EF */

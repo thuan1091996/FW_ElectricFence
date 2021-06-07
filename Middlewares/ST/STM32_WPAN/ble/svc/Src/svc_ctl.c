@@ -297,7 +297,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_UserEvtRx( void *pckt )
 	 */
 	switch (event_notification_status)
 	{
-	case SVCCTL_EvtNotAck:
+		case SVCCTL_EvtNotAck:
 		/**
 		 *  The event has NOT been managed.
 		 *  It shall be passed to the application for processing
@@ -305,15 +305,15 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_UserEvtRx( void *pckt )
 		return_status = SVCCTL_App_Notification(pckt);
 		break;
 
-	case SVCCTL_EvtAckFlowEnable:
+		case SVCCTL_EvtAckFlowEnable:
 		return_status = SVCCTL_UserEvtFlowEnable;
 		break;
 
-	case SVCCTL_EvtAckFlowDisable:
+		case SVCCTL_EvtAckFlowDisable:
 		return_status = SVCCTL_UserEvtFlowDisable;
 		break;
 
-	default:
+		default:
 		return_status = SVCCTL_UserEvtFlowEnable;
 		break;
 	}
