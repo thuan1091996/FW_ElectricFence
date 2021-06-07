@@ -47,11 +47,11 @@ void MX_ADC1_Init(void)
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
+  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc1.Init.LowPowerAutoWait = DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
-  hadc1.Init.NbrOfConversion = 5;
-  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.NbrOfConversion = 3;
+  hadc1.Init.DiscontinuousConvMode = ENABLE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc1.Init.DMAContinuousRequests = DISABLE;
@@ -89,23 +89,6 @@ void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_12;
   sConfig.Rank = ADC_REGULAR_RANK_3;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Configure Regular Channel
-  */
-  sConfig.Channel = ADC_CHANNEL_9;
-  sConfig.Rank = ADC_REGULAR_RANK_4;
-  sConfig.SamplingTime = ADC_SAMPLETIME_247CYCLES_5;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Configure Regular Channel
-  */
-  sConfig.Channel = ADC_CHANNEL_15;
-  sConfig.Rank = ADC_REGULAR_RANK_5;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();

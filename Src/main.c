@@ -219,7 +219,7 @@ int main(void)
 		ADC_ElecFenceTest();
 	}
 	#endif  /* End of ENDLESS_ADC_MEASURING */
-//	Sys_Test();
+	Sys_Test();
 
 	/************** Electrical fence testing ***************/
 	printf("Electrical fence testing... \n");
@@ -270,55 +270,61 @@ void SystemClock_Config(void)
 
 	/** Configure LSE Drive Capability
 	 */
-	HAL_PWR_EnableBkUpAccess();
-	__HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
-	/** Configure the main internal regulator output voltage
-	 */
-	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
-	/** Initializes the RCC Oscillators according to the specified parameters
-	 * in the RCC_OscInitTypeDef structure.
-	 */
-	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE
-			|RCC_OSCILLATORTYPE_LSE;
-	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-	RCC_OscInitStruct.LSEState = RCC_LSE_ON;
-	RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-	RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
-	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-	{
-		Error_Handler();
-	}
-	/** Configure the SYSCLKSource, HCLK, PCLK1 and PCLK2 clocks dividers
-	 */
-	RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK4|RCC_CLOCKTYPE_HCLK2
-			|RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-			|RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSE;
-	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
-	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
-	RCC_ClkInitStruct.AHBCLK2Divider = RCC_SYSCLK_DIV1;
-	RCC_ClkInitStruct.AHBCLK4Divider = RCC_SYSCLK_DIV1;
+  HAL_PWR_EnableBkUpAccess();
+  __HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
+  /** Configure the main internal regulator output voltage
+  */
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE
+                              |RCC_OSCILLATORTYPE_LSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.LSEState = RCC_LSE_ON;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLM = RCC_PLLM_DIV2;
+  RCC_OscInitStruct.PLL.PLLN = 8;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure the SYSCLKSource, HCLK, PCLK1 and PCLK2 clocks dividers
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK4|RCC_CLOCKTYPE_HCLK2
+                              |RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSE;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.AHBCLK2Divider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.AHBCLK4Divider = RCC_SYSCLK_DIV1;
 
-	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
-	{
-		Error_Handler();
-	}
-	/** Initializes the peripherals clocks
-	 */
-	PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SMPS|RCC_PERIPHCLK_RFWAKEUP
-			|RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART1
-			|RCC_PERIPHCLK_LPUART1|RCC_PERIPHCLK_I2C1
-			|RCC_PERIPHCLK_ADC;
-	PeriphClkInitStruct.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
-	PeriphClkInitStruct.Lpuart1ClockSelection = RCC_LPUART1CLKSOURCE_PCLK1;
-	PeriphClkInitStruct.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
-	PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_SYSCLK;
-	PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
-	PeriphClkInitStruct.RFWakeUpClockSelection = RCC_RFWKPCLKSOURCE_LSE;
-	PeriphClkInitStruct.SmpsClockSelection = RCC_SMPSCLKSOURCE_HSI;
-	PeriphClkInitStruct.SmpsDivSelection = RCC_SMPSCLKDIV_RANGE1;
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Initializes the peripherals clocks
+  */
+  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SMPS|RCC_PERIPHCLK_RFWAKEUP
+                              |RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART1
+                              |RCC_PERIPHCLK_LPUART1|RCC_PERIPHCLK_I2C1
+                              |RCC_PERIPHCLK_ADC;
+  PeriphClkInitStruct.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
+  PeriphClkInitStruct.Lpuart1ClockSelection = RCC_LPUART1CLKSOURCE_PCLK1;
+  PeriphClkInitStruct.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
+  PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_PLL;
+  PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
+  PeriphClkInitStruct.RFWakeUpClockSelection = RCC_RFWKPCLKSOURCE_LSE;
+  PeriphClkInitStruct.SmpsClockSelection = RCC_SMPSCLKSOURCE_HSI;
+  PeriphClkInitStruct.SmpsDivSelection = RCC_SMPSCLKDIV_RANGE1;
 	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
 	{
 		Error_Handler();
@@ -781,10 +787,10 @@ volatile bool g_dmanewdata=false;
 #define TEST_DMA	1
 eTestStatus LORA_FWTest(void)
 {
-	uint8_t lora_datarecv=0;
-	uint8_t lora_dataindex=0;
 	LORA_test = RET_FAIL;
 #if LORA_TEST
+	uint8_t lora_datarecv=0;
+	uint8_t lora_dataindex=0;
 	HAL_Delay(1000);
 	HAL_GPIO_WritePin(RAK_EN_GPIO_Port, RAK_EN_Pin, GPIO_PIN_SET);
 	HAL_Delay(2000);												//Wait for stable
@@ -1069,11 +1075,73 @@ uint32_t g_ui32input[BUF_SIZE-1]={0}; 	/* Ignore Vref */
 volatile bool g_newadcdata=false;		/* New ADC data flag */
 
 
+void ADC_Power()
+{
+	ADC_ChannelConfTypeDef sConfig = {0};
+	HAL_ADC_DeInit(&hadc1);
+
+	hadc1.Instance = ADC1;
+	hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+	hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+	hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+	hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
+	hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+	hadc1.Init.LowPowerAutoWait = DISABLE;
+	hadc1.Init.ContinuousConvMode = DISABLE;
+	hadc1.Init.NbrOfConversion = 3;
+	hadc1.Init.DiscontinuousConvMode = ENABLE;
+	hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+	hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+	hadc1.Init.DMAContinuousRequests = DISABLE;
+	hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+	hadc1.Init.OversamplingMode = ENABLE;
+	hadc1.Init.Oversampling.Ratio = ADC_OVERSAMPLING_RATIO_16;
+	hadc1.Init.Oversampling.RightBitShift = ADC_RIGHTBITSHIFT_NONE;
+	hadc1.Init.Oversampling.TriggeredMode = ADC_TRIGGEREDMODE_SINGLE_TRIGGER;
+	hadc1.Init.Oversampling.OversamplingStopReset = ADC_REGOVERSAMPLING_CONTINUED_MODE;
+	if (HAL_ADC_Init(&hadc1) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	/** Configure Regular Channel
+	 */
+	sConfig.Channel = ADC_CHANNEL_VREFINT;
+	sConfig.Rank = ADC_REGULAR_RANK_1;
+	sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
+	sConfig.SingleDiff = ADC_SINGLE_ENDED;
+	sConfig.OffsetNumber = ADC_OFFSET_NONE;
+	sConfig.Offset = 0;
+	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	/** Configure Regular Channel
+	 */
+	sConfig.Channel = ADC_CHANNEL_11;
+	sConfig.Rank = ADC_REGULAR_RANK_2;
+	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	/** Configure Regular Channel
+	 */
+	sConfig.Channel = ADC_CHANNEL_12;
+	sConfig.Rank = ADC_REGULAR_RANK_3;
+	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+	{
+		Error_Handler();
+	}
+
+}
+
 eTestStatus ADC_FWTest(void)
 {
+
+	ADC_Power();
 	ADC_test = RET_FAIL;
 	#ifdef ADC_TEST
 	HAL_GPIO_WritePin(EN_BATT_GPIO_Port, EN_BATT_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(RELAY_EN_GPIO_Port, RELAY_EN_Pin, GPIO_PIN_SET);
 	HAL_Delay(500);			/* Wait for stable */
 	while(1)
 	{
@@ -1084,8 +1152,11 @@ eTestStatus ADC_FWTest(void)
 		HAL_ADC_Stop_IT(&hadc1);
 		g_ui32vref = __LL_ADC_CALC_VREFANALOG_VOLTAGE(g_ui32ADCraw[0], ADC_RESOLUTION_12B);
 		g_ui32input[0]= __LL_ADC_CALC_DATA_TO_VOLTAGE(g_ui32vref, g_ui32ADCraw[1], ADC_RESOLUTION_12B);
+		g_ui32input[1]= __LL_ADC_CALC_DATA_TO_VOLTAGE(g_ui32vref, g_ui32ADCraw[2], ADC_RESOLUTION_12B);
 		g_ui32bat = 4 * g_ui32input[0];
+		g_ui32_12v = g_ui32input[1] *5;
 		printf("Battery voltages: %ld (mV)\n",g_ui32bat);
+		printf("Relay voltages: %ld (mV)\n",g_ui32_12v);
 		g_newadcdata = false;
 		#if !ENDLESS_BATT_MEASURING
 		break;
@@ -1241,20 +1312,30 @@ HAL_StatusTypeDef I2C_Transferring(tI2CPackage *I2CPackage_T)
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
-	#ifdef FW_ELECFENCE
+	#ifndef FW_ELECFENCE
 	if(hadc->Instance == ADC1)
 	{
 		g_newadcdata = true;
 	}
 	#else	/* TrashSensor used interrupt instead of DMA */
-	if(LL_ADC_IsActiveFlag_EOS(ADC1) != 0) /* EOS event */
+	if(LL_ADC_IsActiveFlag_EOS(ADC1) != 0)  /* EOS event */
 	{
-		g_ui32ADCraw[1] = HAL_ADC_GetValue(&hadc1);
+		g_ui32ADCraw[2] = HAL_ADC_GetValue(&hadc1);
 		g_newadcdata = true;
 	}
 	else									/* EOC event */
 	{
-		g_ui32ADCraw[0] = HAL_ADC_GetValue(&hadc1);
+		static uint8_t eoc_count=0;
+		if(eoc_count == 0)
+		{
+			g_ui32ADCraw[0] = HAL_ADC_GetValue(&hadc1);
+			eoc_count++;
+		}
+		else
+		{
+			g_ui32ADCraw[1] = HAL_ADC_GetValue(&hadc1);
+			eoc_count=0;
+		}
 	}
 	#endif  /* End of ifdef FW_ELECFENCE */
 
