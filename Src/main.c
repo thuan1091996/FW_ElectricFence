@@ -1169,26 +1169,95 @@ eTestStatus ADC_FWTest(void)
 	return ADC_test;
 }
 
+#define ADC_DMA_BUF_LEN			100
+uint32_t ADC_DMA_BUF[ADC_DMA_BUF_LEN]={0};
+void ADC_ElecFenceInit()
+{
+	ADC_ChannelConfTypeDef sConfig = {0};
+	HAL_ADC_DeInit(&hadc1);
 
-#if ADC_ELECFENCE_TEST
-/* ADC FW Test */
+	hadc1.Instance = ADC1;
+	hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+	hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+	hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+	hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
+	hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
+	hadc1.Init.LowPowerAutoWait = DISABLE;
+	hadc1.Init.ContinuousConvMode = ENABLE;
+	hadc1.Init.NbrOfConversion = 2;
+	hadc1.Init.DiscontinuousConvMode = DISABLE;
+	hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+	hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+	hadc1.Init.DMAContinuousRequests = ENABLE;
+	hadc1.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
+	hadc1.Init.OversamplingMode = DISABLE;
+	if (HAL_ADC_Init(&hadc1) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	/** Configure Regular Channel
+	 */
+	sConfig.Channel = ADC_CHANNEL_9;
+	sConfig.Rank = ADC_REGULAR_RANK_1;
+	sConfig.SamplingTime = ADC_SAMPLETIME_6CYCLES_5;
+	sConfig.SingleDiff = ADC_SINGLE_ENDED;
+	sConfig.OffsetNumber = ADC_OFFSET_NONE;
+	sConfig.Offset = 0;
+	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	/** Configure Regular Channel
+	 */
+	sConfig.Channel = ADC_CHANNEL_15;
+	sConfig.Rank = ADC_REGULAR_RANK_2;
+	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+	{
+		Error_Handler();
+	}
+}
+
+
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
+{
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(hadc);
+  GPIOB->ODR ^= LED_G_Pin;
+  /* NOTE : This function should not be modified. When the callback is needed,
+            function HAL_ADC_ConvHalfCpltCallback must be implemented in the user file.
+  */
+}
+
+
+void ADC_DMAHalfBuffer(DMA_HandleTypeDef *_hdma)
+{
+	GPIOB->ODR ^= LED_G_Pin;
+}
+
+void ADC_DMAFullBuffer(DMA_HandleTypeDef *_hdma)
+{
+	GPIOB->ODR ^= LED_G_Pin;
+}
 
 eTestStatus ADC_ElecFenceTest(void)
 {
 	ADCElecFence_Test = RET_FAIL;
 	#ifdef ADC_ELECFENCE_TEST
-	/* Power on ADC modules */
 	static bool wait_4completion=false;
-
+	ADC_ElecFenceInit();
+	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+	HAL_ADC_Start_DMA(&hadc1, ADC_DMA_BUF, ADC_DMA_BUF_LEN);
+	HAL_NVIC_DisableIRQ(DMA1_Channel2_IRQn);
+	HAL_DMA_RegisterCallback(&hdma_adc1, HAL_DMA_XFER_HALFCPLT_CB_ID, ADC_DMAHalfBuffer);
+	HAL_DMA_RegisterCallback(&hdma_adc1, HAL_DMA_XFER_CPLT_CB_ID, ADC_DMAFullBuffer);
+	HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
+	while(1)
+	{
 	if(wait_4completion == false)
 	{
-		HAL_GPIO_WritePin(EN_BATT_GPIO_Port, EN_BATT_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(RELAY_EN_GPIO_Port, RELAY_EN_Pin, GPIO_PIN_SET);
-		HAL_Delay(500);			/* Wait for stable */
 		/* Start measuring & converting */
 		HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
-		HAL_ADC_Start_DMA(&hadc1, g_ui32ADCraw, BUF_SIZE);
-		HAL_ADC_Start_IT(&hadc1);
+		HAL_ADC_Start_DMA(&hadc1, ADC_DMA_BUF, ADC_DMA_BUF_LEN);
 		wait_4completion = true;
 	}
 	if(g_newadcdata != false)
@@ -1211,12 +1280,12 @@ eTestStatus ADC_ElecFenceTest(void)
 		HAL_ADC_Stop_DMA(&hadc1);
 		HAL_ADC_Stop_IT(&hadc1);
 	}
+	}
 #else
 	printf("----- Skipped test ----- \n");
 #endif /*End of ADC_ELECFENCE_TEST*/
 	return ADCElecFence_Test;
 }
-#endif  /* End of ADC_ELECFENCE_TEST */
 
 
 /**************************************************************************************/
