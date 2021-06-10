@@ -97,14 +97,14 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 
 #define ENDLESS_LOOP_ACL					NOT_USED
 #define ENDLESS_LOOP_DYP					NOT_USED
-#define ENDLESS_BATT_MEASURING				USED
-#define ENDLESS_ADC_MEASURING				NOT_USED
+#define ENDLESS_BATT_MEASURING				NOT_USED
+#define ENDLESS_HV_MEASURING				NOT_USED
 #define DEBUG_LORA_AT_UART					NOT_USED
 
 #define FW_TEST								USED
 #define EEPROM_TEST 						USED
 #define	ACL_TEST							USED
-#define GPS_TEST							NOT_USED
+#define GPS_TEST							USED
 
 #ifdef FW_ELECFENCE
 #define ADC_ELECFENCE_TEST					USED
@@ -114,7 +114,7 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 
 #define ADC_TEST							USED
 
-#define LORA_TEST							NOT_USED
+#define LORA_TEST							USED
 #if LORA_TEST
 #define CHANGE_DEVEUI						USED
 #define TEST_DOWNLINK						USED
@@ -126,6 +126,8 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 
 #define DEBUG_CONSOLE						USED
 #define DEBUG_UART							NOT_USED
+
+#define DEV_SLEEP							NOT_USED
 
 #define PROBE1				GPIO_PIN_11
 #define PROBE2				GPIO_PIN_12

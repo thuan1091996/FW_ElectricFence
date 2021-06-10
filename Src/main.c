@@ -119,15 +119,18 @@ PUTCHAR_PROTOTYPE
 
 #endif  /* End of DEBUG_UART */
 #endif  /* End of DEBUG_CONSOLE */
+
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
 volatile bool g_acl_interrupt=false;
+volatile bool g_button_interrupt=false;
 volatile bool g_rak4200_newdata=false;
 volatile bool g_rtcwakeup=false;
 volatile bool g_testingble=false;
+uint32_t g_max_hv=0;
 RTC_TimeTypeDef curTime = {0};
 RTC_DateTypeDef curDate = {0};
 RTC_TimeTypeDef eventTime = {0};
@@ -171,36 +174,36 @@ void DebugProbeInit(void);
   */
 int main(void)
 {
-	/* USER CODE BEGIN 1 */
+  /* USER CODE BEGIN 1 */
 
-	/* USER CODE END 1 */
+  /* USER CODE END 1 */
 
-	/* MCU Configuration--------------------------------------------------------*/
+  /* MCU Configuration--------------------------------------------------------*/
 
-	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-	HAL_Init();
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
 
-	/* USER CODE BEGIN Init */
-	/* USER CODE END Init */
+  /* USER CODE BEGIN Init */
+  /* USER CODE END Init */
 
-	/* Configure the system clock */
-	SystemClock_Config();
+  /* Configure the system clock */
+  SystemClock_Config();
 
-	/* USER CODE BEGIN SysInit */
+  /* USER CODE BEGIN SysInit */
 
-	/* USER CODE END SysInit */
+  /* USER CODE END SysInit */
 
-	/* Initialize all configured peripherals */
-	MX_GPIO_Init();
-	MX_DMA_Init();
-	MX_USART1_UART_Init();
-	MX_RF_Init();
-	MX_RTC_Init();
-	MX_I2C1_Init();
-	MX_LPUART1_UART_Init();
-	MX_TIM16_Init();
-	MX_ADC1_Init();
-	/* USER CODE BEGIN 2 */
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_DMA_Init();
+  MX_USART1_UART_Init();
+  MX_RF_Init();
+  MX_RTC_Init();
+  MX_I2C1_Init();
+  MX_LPUART1_UART_Init();
+  MX_TIM16_Init();
+  MX_ADC1_Init();
+  /* USER CODE BEGIN 2 */
 
 	#if DEBUG_ITM
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -213,12 +216,12 @@ int main(void)
 
 	HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
 	HAL_Delay(500);
-	#if ENDLESS_ADC_MEASURING
+	#if ENDLESS_HV_MEASURING
 	while(1)
 	{
 		ADC_ElecFenceTest();
 	}
-	#endif  /* End of ENDLESS_ADC_MEASURING */
+	#endif  /* End of ENDLESS_HV_MEASURING */
 	Sys_Test();
 
 	/************** Electrical fence testing ***************/
@@ -234,12 +237,15 @@ int main(void)
 		HAL_Delay(100);
 	}
 	/*******************************************************/
-	g_testingble = true;
-	printf("Testing BLE function (including button test)\n");
 	/* USER CODE END 2 */
 
 	/* Init code for STM32_WPAN */
+	#if BLE_TEST
 	APPE_Init();
+	g_testingble = true;
+	printf("Testing BLE function (including button test)\n");
+	#endif  /* End of BLE_TEST */
+
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 	while (1)
@@ -252,7 +258,10 @@ int main(void)
 		#endif  /* End of BLE_TEST */
 
 		#if ADC_ELECFENCE_TEST
+//		GPIOB->ODR ^= LED_G_Pin;
 		ADC_ElecFenceTest();
+//		GPIOB->ODR ^= LED_G_Pin;
+//		printf("HV %d (mV)\n", g_max_hv);
 		#endif  /* End of ADC_ELECFENCE_TEST */
 	}
 	/* USER CODE END 3 */
@@ -264,12 +273,12 @@ int main(void)
   */
 void SystemClock_Config(void)
 {
-	RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-	RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-	RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
 
-	/** Configure LSE Drive Capability
-	 */
+  /** Configure LSE Drive Capability
+  */
   HAL_PWR_EnableBkUpAccess();
   __HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
   /** Configure the main internal regulator output voltage
@@ -300,14 +309,14 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK4|RCC_CLOCKTYPE_HCLK2
                               |RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSE;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
-  RCC_ClkInitStruct.AHBCLK2Divider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.AHBCLK2Divider = RCC_SYSCLK_DIV2;
   RCC_ClkInitStruct.AHBCLK4Divider = RCC_SYSCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
   {
     Error_Handler();
   }
@@ -320,18 +329,18 @@ void SystemClock_Config(void)
   PeriphClkInitStruct.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
   PeriphClkInitStruct.Lpuart1ClockSelection = RCC_LPUART1CLKSOURCE_PCLK1;
   PeriphClkInitStruct.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
-  PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_PLL;
+  PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_SYSCLK;
   PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
   PeriphClkInitStruct.RFWakeUpClockSelection = RCC_RFWKPCLKSOURCE_LSE;
   PeriphClkInitStruct.SmpsClockSelection = RCC_SMPSCLKSOURCE_HSI;
   PeriphClkInitStruct.SmpsDivSelection = RCC_SMPSCLKDIV_RANGE1;
-	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
-	{
-		Error_Handler();
-	}
-	/* USER CODE BEGIN Smps */
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN Smps */
 
-	/* USER CODE END Smps */
+  /* USER CODE END Smps */
 }
 
 /* USER CODE BEGIN 4 */
@@ -371,7 +380,14 @@ eTestStatus Sys_Test(void)
 		printf("ACL detected motion \n");
 		g_acl_interrupt = false;
 	}
-	else printf("Wake up by button \n");
+	else if (g_button_interrupt == true)
+	{
+		printf("Wake up by button \n");
+	}
+	else
+	{
+		printf("Wake up from no where \n");
+	}
 	HAL_Delay(100);
 
 	return SYS_test;
@@ -789,8 +805,6 @@ eTestStatus LORA_FWTest(void)
 {
 	LORA_test = RET_FAIL;
 #if LORA_TEST
-	uint8_t lora_datarecv=0;
-	uint8_t lora_dataindex=0;
 	HAL_Delay(1000);
 	HAL_GPIO_WritePin(RAK_EN_GPIO_Port, RAK_EN_Pin, GPIO_PIN_SET);
 	HAL_Delay(2000);												//Wait for stable
@@ -807,7 +821,6 @@ eTestStatus LORA_FWTest(void)
 		{
 			//Clear buffer before receive new response
 			memset(g_lora_datarecv, 0, RX_BUF_LEN);
-			lora_dataindex = 0;
 			//Send commands and wait for response in case of successfully transmit command
 			if(HAL_UART_Transmit(&hlpuart1, (uint8_t*)LoRaInitCommands[command_count], strlen(LoRaInitCommands[command_count]), 100) == HAL_OK)
 			{
@@ -838,7 +851,6 @@ eTestStatus LORA_FWTest(void)
 	for (int retry_count = 0; retry_count < MAX_REJOIN; ++retry_count)
 	{
 		memset(g_lora_datarecv, 0, RX_BUF_LEN);
-		lora_dataindex = 0;
 		HAL_Delay(10000);
 		if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_JOIN, strlen(RAK4200_JOIN), 100) == HAL_OK)
 		{
@@ -868,7 +880,6 @@ eTestStatus LORA_FWTest(void)
 		for (int retry_count = 0; retry_count < MAX_REJOIN; )
 		{
 			memset(g_lora_datarecv, 0, RX_BUF_LEN);
-			lora_dataindex = 0;
 			HAL_Delay(5000);
 			if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_SENDTEST, strlen(RAK4200_SENDTEST), 100) == HAL_OK)
 			{
@@ -891,7 +902,8 @@ eTestStatus LORA_FWTest(void)
 		}
 	}
 #else
-
+	uint8_t lora_dataindex;
+	uint8_t lora_datarecv=0;
 	if(LoRa_curState == DEVICE_STATE_JOINED)
 	{
 		for (int retry_count = 0; retry_count < MAX_REJOIN; ++retry_count)
@@ -1006,15 +1018,12 @@ bool GPS_Settings(void)
 	uint8_t data_recv=0;
 	uint8_t gps_dataindex=0;
 	uint8_t max_retry = 10;
-	uint8_t recv_count=0;
-
 	for (int count = 0; count < max_retry; ++count)		//Retry in case unsuccessful communication
 	{
 		printf("Data sent to module GPS: \n");
 		if(HAL_UART_Transmit(&huart1, (uint8_t*)PMTK_SET_NMEA_OUTPUT_GGAONLY, strlen( PMTK_SET_NMEA_OUTPUT_GGAONLY), UART_TIMEOUT) == HAL_OK)
 		{
 			gps_dataindex = 0;
-			recv_count = 0;
 			do
 			{
 				if (HAL_UART_Receive_IT(&huart1, &data_recv, 1) == HAL_OK)
@@ -1027,11 +1036,13 @@ bool GPS_Settings(void)
 				}
 			}
 			while( (g_gps_datarecv[gps_dataindex-1] != '\r') && (g_gps_datarecv[gps_dataindex] != '\n') );
-			recv_count = gps_dataindex;
 			if (strstr( (const char*)g_gps_datarecv, (const char*)"PMTK001,314") != NULL)
 			{
+				#if DEBUG_CONSOLE
 				printf("Data recv GPS:  %s \n", g_gps_datarecv);
-				//				HAL_UART_Transmit(&huart1, g_gps_datarecv, recv_count, 100);
+				#else
+				HAL_UART_Transmit(&huart1, g_gps_datarecv, gps_dataindex, 100);
+				#endif  /* End of DEBUG_CONSOLE */
 				return true;
 			}
 		}
@@ -1057,14 +1068,19 @@ eTestStatus GPS_FWTest(void)
 
 /**************************************************************************************/
 /********************************* ADC FW Test ************************************/
-
+extern DMA_HandleTypeDef hdma_adc1;
 uint32_t g_ui32vref=0;
 uint32_t g_ui32bat=0;
 #ifndef FW_ELECFENCE
 #define BUF_SIZE	2	/* VREF | ADC 3.3 */
-
 #else
 #define BUF_SIZE	5	/* VREF | ADC 3.3 | ADC 12V | ADC+ | ADC- */
+#define ADC_DMA_BUF_LEN			10000
+
+uint32_t ADC_DMA_BUF[ADC_DMA_BUF_LEN]={0};
+uint32_t ADC_DMA_DATA[ADC_DMA_BUF_LEN/2]={0};
+
+
 uint32_t g_ui32_12v=0;
 uint32_t g_ui32_pos=0;
 uint32_t g_ui32_neg=0;
@@ -1073,10 +1089,13 @@ uint32_t g_ui32_neg=0;
 uint32_t g_ui32ADCraw[BUF_SIZE]={0};	/* Raw ADC input data */
 uint32_t g_ui32input[BUF_SIZE-1]={0}; 	/* Ignore Vref */
 volatile bool g_newadcdata=false;		/* New ADC data flag */
+volatile bool g_useddma = false;		/* true => DMA(HV), false => ADC interrupt (EOS,EOC - battery)*/
+volatile bool g_flag_dmahalf = false;
+volatile bool g_flag_dmafull = false;
 
-
-void ADC_Power()
+void ADC_PowerInit()
 {
+	g_useddma = false;
 	ADC_ChannelConfTypeDef sConfig = {0};
 	HAL_ADC_DeInit(&hadc1);
 
@@ -1094,11 +1113,11 @@ void ADC_Power()
 	hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
 	hadc1.Init.DMAContinuousRequests = DISABLE;
 	hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
-	hadc1.Init.OversamplingMode = ENABLE;
-	hadc1.Init.Oversampling.Ratio = ADC_OVERSAMPLING_RATIO_16;
-	hadc1.Init.Oversampling.RightBitShift = ADC_RIGHTBITSHIFT_NONE;
-	hadc1.Init.Oversampling.TriggeredMode = ADC_TRIGGEREDMODE_SINGLE_TRIGGER;
-	hadc1.Init.Oversampling.OversamplingStopReset = ADC_REGOVERSAMPLING_CONTINUED_MODE;
+//	hadc1.Init.OversamplingMode = ENABLE;
+//	hadc1.Init.Oversampling.Ratio = ADC_OVERSAMPLING_RATIO_16;
+//	hadc1.Init.Oversampling.RightBitShift = ADC_RIGHTBITSHIFT_NONE;
+//	hadc1.Init.Oversampling.TriggeredMode = ADC_TRIGGEREDMODE_SINGLE_TRIGGER;
+//	hadc1.Init.Oversampling.OversamplingStopReset = ADC_REGOVERSAMPLING_CONTINUED_MODE;
 	if (HAL_ADC_Init(&hadc1) != HAL_OK)
 	{
 		Error_Handler();
@@ -1134,10 +1153,54 @@ void ADC_Power()
 
 }
 
+void ADC_ElecFenceInit()
+{
+	ADC_ChannelConfTypeDef sConfig = {0};
+	HAL_ADC_DeInit(&hadc1);
+	hadc1.Instance = ADC1;
+	hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+	hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+	hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+	hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
+	hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
+	hadc1.Init.LowPowerAutoWait = DISABLE;
+	hadc1.Init.ContinuousConvMode = ENABLE;
+	hadc1.Init.NbrOfConversion = 2;
+	hadc1.Init.DiscontinuousConvMode = DISABLE;
+	hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+	hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+	hadc1.Init.DMAContinuousRequests = ENABLE;
+	hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+	hadc1.Init.OversamplingMode = DISABLE;
+	if (HAL_ADC_Init(&hadc1) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	/** Configure Regular Channel
+	 */
+	sConfig.Channel = ADC_CHANNEL_9;
+	sConfig.Rank = ADC_REGULAR_RANK_1;
+	sConfig.SamplingTime = ADC_SAMPLETIME_24CYCLES_5;
+	sConfig.SingleDiff = ADC_SINGLE_ENDED;
+	sConfig.OffsetNumber = ADC_OFFSET_NONE;
+	sConfig.Offset = 0;
+	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	/** Configure Regular Channel
+	 */
+	sConfig.Channel = ADC_CHANNEL_15;
+	sConfig.Rank = ADC_REGULAR_RANK_2;
+	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+	{
+		Error_Handler();
+	}
+}
+
 eTestStatus ADC_FWTest(void)
 {
-
-	ADC_Power();
+	ADC_PowerInit();
 	ADC_test = RET_FAIL;
 	#ifdef ADC_TEST
 	HAL_GPIO_WritePin(EN_BATT_GPIO_Port, EN_BATT_Pin, GPIO_PIN_SET);
@@ -1169,124 +1232,113 @@ eTestStatus ADC_FWTest(void)
 	return ADC_test;
 }
 
-#define ADC_DMA_BUF_LEN			100
-uint32_t ADC_DMA_BUF[ADC_DMA_BUF_LEN]={0};
-void ADC_ElecFenceInit()
+/* If generate speed > processing speed ===> OK */
+/* If generate speed < processing speed ===> NOT OK since data will be all zeros */
+uint32_t GetLargest(uint32_t* p_arr, uint32_t len)
 {
-	ADC_ChannelConfTypeDef sConfig = {0};
-	HAL_ADC_DeInit(&hadc1);
-
-	hadc1.Instance = ADC1;
-	hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
-	hadc1.Init.Resolution = ADC_RESOLUTION_12B;
-	hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-	hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
-	hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
-	hadc1.Init.LowPowerAutoWait = DISABLE;
-	hadc1.Init.ContinuousConvMode = ENABLE;
-	hadc1.Init.NbrOfConversion = 2;
-	hadc1.Init.DiscontinuousConvMode = DISABLE;
-	hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-	hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-	hadc1.Init.DMAContinuousRequests = ENABLE;
-	hadc1.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
-	hadc1.Init.OversamplingMode = DISABLE;
-	if (HAL_ADC_Init(&hadc1) != HAL_OK)
-	{
-		Error_Handler();
-	}
-	/** Configure Regular Channel
-	 */
-	sConfig.Channel = ADC_CHANNEL_9;
-	sConfig.Rank = ADC_REGULAR_RANK_1;
-	sConfig.SamplingTime = ADC_SAMPLETIME_6CYCLES_5;
-	sConfig.SingleDiff = ADC_SINGLE_ENDED;
-	sConfig.OffsetNumber = ADC_OFFSET_NONE;
-	sConfig.Offset = 0;
-	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-	{
-		Error_Handler();
-	}
-	/** Configure Regular Channel
-	 */
-	sConfig.Channel = ADC_CHANNEL_15;
-	sConfig.Rank = ADC_REGULAR_RANK_2;
-	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-	{
-		Error_Handler();
-	}
+    // Initialize maximum element
+    uint32_t max = *p_arr;
+    // Traverse array elements from second and compare every element with current max
+    for (uint32_t i = 1; i < len; i++)
+    {
+        if (*(p_arr + i) > max)
+            max = *(p_arr + i);
+    }
+    return max;
 }
 
 
-void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
-{
-  /* Prevent unused argument(s) compilation warning */
-  UNUSED(hadc);
-  GPIOB->ODR ^= LED_G_Pin;
-  /* NOTE : This function should not be modified. When the callback is needed,
-            function HAL_ADC_ConvHalfCpltCallback must be implemented in the user file.
-  */
-}
-
-
-void ADC_DMAHalfBuffer(DMA_HandleTypeDef *_hdma)
-{
-	GPIOB->ODR ^= LED_G_Pin;
-}
-
-void ADC_DMAFullBuffer(DMA_HandleTypeDef *_hdma)
-{
-	GPIOB->ODR ^= LED_G_Pin;
-}
 
 eTestStatus ADC_ElecFenceTest(void)
 {
 	ADCElecFence_Test = RET_FAIL;
 	#ifdef ADC_ELECFENCE_TEST
-	static bool wait_4completion=false;
-	ADC_ElecFenceInit();
+	static bool Isinit = false;
+	if(Isinit == false)
+	{
+		ADC_ElecFenceInit();
+		g_useddma = true;
+		Isinit = true;
+	}
+	/* Start measuring & converting */
 	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+	g_flag_dmafull = false;
+	g_flag_dmahalf = false;
+	uint32_t max_temp = 0;
+	uint32_t max_ret=0;
 	HAL_ADC_Start_DMA(&hadc1, ADC_DMA_BUF, ADC_DMA_BUF_LEN);
-	HAL_NVIC_DisableIRQ(DMA1_Channel2_IRQn);
-	HAL_DMA_RegisterCallback(&hdma_adc1, HAL_DMA_XFER_HALFCPLT_CB_ID, ADC_DMAHalfBuffer);
-	HAL_DMA_RegisterCallback(&hdma_adc1, HAL_DMA_XFER_CPLT_CB_ID, ADC_DMAFullBuffer);
-	HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
-	while(1)
+	for(uint32_t count = 0; count < 3440; )	//172 ~ 1s
 	{
-	if(wait_4completion == false)
-	{
-		/* Start measuring & converting */
-		HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
-		HAL_ADC_Start_DMA(&hadc1, ADC_DMA_BUF, ADC_DMA_BUF_LEN);
-		wait_4completion = true;
-	}
-	if(g_newadcdata != false)
-	{
-		ADCElecFence_Test = RET_OK;
-		HAL_ADC_Stop_DMA(&hadc1);
-		g_ui32vref = __LL_ADC_CALC_VREFANALOG_VOLTAGE(g_ui32ADCraw[0], ADC_RESOLUTION_12B);
-		for(uint8_t idx=0; idx < BUF_SIZE-1 ; idx++) /* ignore Vref */
+		/* Find max of [0 -> Len/2] */
+		max_temp = GetLargest(&ADC_DMA_BUF[0], (ADC_DMA_BUF_LEN / 2));
+		if(max_temp > max_ret)
 		{
-			g_ui32input[idx] = __LL_ADC_CALC_DATA_TO_VOLTAGE(g_ui32vref, g_ui32ADCraw[idx+1], ADC_RESOLUTION_12B);
+			max_ret = max_temp;
 		}
-		/* Convert to application data */
-		g_ui32bat = g_ui32input[0] * 4;
-		g_ui32_12v = g_ui32input[1] *5;
-		g_ui32_pos = g_ui32input[2];
-		g_ui32_neg = g_ui32input[3];
-		/* Set flags and stop measuring */
-		g_newadcdata = false;
-		wait_4completion = false;
-		HAL_ADC_Stop_DMA(&hadc1);
-		HAL_ADC_Stop_IT(&hadc1);
+		if(g_flag_dmahalf == true)
+		{
+			/* Find max of [Len/2 -> Len] */
+			max_temp = GetLargest(&ADC_DMA_BUF[ADC_DMA_BUF_LEN / 2], (ADC_DMA_BUF_LEN / 2));
+			if(max_temp > max_ret)
+			{
+				max_ret = max_temp;
+			}
+			g_flag_dmahalf = false;
+		}
+		if(g_flag_dmafull == true)
+		{
+			count ++;
+			g_flag_dmafull = false;
+		}
 	}
-	}
-#else
+	HAL_ADC_Stop_DMA(&hadc1);
+	g_max_hv= __LL_ADC_CALC_DATA_TO_VOLTAGE(g_ui32vref, max_ret, ADC_RESOLUTION_12B);
+	#else
 	printf("----- Skipped test ----- \n");
-#endif /*End of ADC_ELECFENCE_TEST*/
+	#endif /*End of ADC_ELECFENCE_TEST*/
 	return ADCElecFence_Test;
 }
 
+
+
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
+{
+//	GPIOB->ODR ^= LED_G_Pin;
+	g_flag_dmahalf = true;
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+	if(g_useddma == true)	 /* High voltage measuring */
+	{
+//		GPIOB->ODR ^= LED_G_Pin;
+		g_flag_dmafull = true;
+//		HAL_ADC_Stop_DMA(&hadc1);
+	}
+	else					/* Vref, vbat, U12V measuring */
+	{
+		if(LL_ADC_IsActiveFlag_EOS(ADC1) != 0)  /* EOS event */
+		{
+			g_ui32ADCraw[2] = HAL_ADC_GetValue(&hadc1);
+			g_newadcdata = true;
+		}
+		else									/* EOC event */
+		{
+			static uint8_t eoc_count=0;
+			if(eoc_count == 0)
+			{
+				g_ui32ADCraw[0] = HAL_ADC_GetValue(&hadc1);
+				eoc_count++;
+			}
+			else
+			{
+				g_ui32ADCraw[1] = HAL_ADC_GetValue(&hadc1);
+				eoc_count=0;
+			}
+		}
+
+	}
+}
 
 /**************************************************************************************/
 volatile bool g_buttonpressed=false;
@@ -1303,6 +1355,7 @@ void ButtonsHandler(void)
 			}
 			else
 			{
+				g_button_interrupt = true;
 				printf("Button pressed \n");
 			}
 			g_buttonpressed = false;
@@ -1324,9 +1377,9 @@ void DebugProbeInit(void)
 	HAL_GPIO_WritePin(PROBE_PORT, PROBE1 | PROBE2, GPIO_PIN_RESET);
 }
 
-
 void EnterStopMode( void)
 {
+	#if DEV_SLEEP
 	printf("Entering stop 2 mode...\n");
 
 	HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
@@ -1355,60 +1408,7 @@ void EnterStopMode( void)
 	// Resume SYSTICK Timer
 	HAL_ResumeTick();
 	printf("Waked up from stop 2 \n");
-
-}
-
-HAL_StatusTypeDef I2C_Transferring(tI2CPackage *I2CPackage_T)
-{
-	HAL_StatusTypeDef result;
-	if (I2CPackage_T->I2CMode_T == I2C_W || I2CPackage_T->I2CMode_T == I2C_WW) {
-		result = HAL_I2C_Mem_Write(&hi2c1, I2CPackage_T->DeviceAddress_U16,
-				I2CPackage_T->Register_16,
-				I2C_MEMADD_SIZE_8BIT, I2CPackage_T->Data_U8P,
-				I2CPackage_T->Length_U16, 0x1000U);
-	} else if (I2CPackage_T->I2CMode_T == I2C_WW
-			|| I2CPackage_T->I2CMode_T == I2C_WR) {
-		result = HAL_I2C_Mem_Read(&hi2c1, I2CPackage_T->DeviceAddress_U16,
-				I2CPackage_T->Register_16,
-				I2C_MEMADD_SIZE_8BIT, I2CPackage_T->Data_U8P,
-				I2CPackage_T->Length_U16, 0x1000U);
-	}
-	if (result != HAL_OK) {
-		//ErrorHander(result);
-	}
-	return result;
-}
-
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
-{
-	#ifndef FW_ELECFENCE
-	if(hadc->Instance == ADC1)
-	{
-		g_newadcdata = true;
-	}
-	#else	/* TrashSensor used interrupt instead of DMA */
-	if(LL_ADC_IsActiveFlag_EOS(ADC1) != 0)  /* EOS event */
-	{
-		g_ui32ADCraw[2] = HAL_ADC_GetValue(&hadc1);
-		g_newadcdata = true;
-	}
-	else									/* EOC event */
-	{
-		static uint8_t eoc_count=0;
-		if(eoc_count == 0)
-		{
-			g_ui32ADCraw[0] = HAL_ADC_GetValue(&hadc1);
-			eoc_count++;
-		}
-		else
-		{
-			g_ui32ADCraw[1] = HAL_ADC_GetValue(&hadc1);
-			eoc_count=0;
-		}
-	}
-	#endif  /* End of ifdef FW_ELECFENCE */
-
-
+	#endif  /* End of DEV_SLEEP */
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
@@ -1435,7 +1435,30 @@ void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
 {
 	g_rtcwakeup = true;
 }
+
+HAL_StatusTypeDef I2C_Transferring(tI2CPackage *I2CPackage_T)
+{
+	HAL_StatusTypeDef result;
+	if (I2CPackage_T->I2CMode_T == I2C_W || I2CPackage_T->I2CMode_T == I2C_WW) {
+		result = HAL_I2C_Mem_Write(&hi2c1, I2CPackage_T->DeviceAddress_U16,
+				I2CPackage_T->Register_16,
+				I2C_MEMADD_SIZE_8BIT, I2CPackage_T->Data_U8P,
+				I2CPackage_T->Length_U16, 0x1000U);
+	} else if (I2CPackage_T->I2CMode_T == I2C_WW
+			|| I2CPackage_T->I2CMode_T == I2C_WR) {
+		result = HAL_I2C_Mem_Read(&hi2c1, I2CPackage_T->DeviceAddress_U16,
+				I2CPackage_T->Register_16,
+				I2C_MEMADD_SIZE_8BIT, I2CPackage_T->Data_U8P,
+				I2CPackage_T->Length_U16, 0x1000U);
+	}
+	if (result != HAL_OK) {
+		//ErrorHander(result);
+	}
+	return result;
+}
+
 /**************************************************************************************/
+
 /* USER CODE END 4 */
 
 /**
