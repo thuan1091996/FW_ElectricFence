@@ -157,6 +157,7 @@ eTestStatus ADC_FWTest(void);
 eTestStatus BLE_FWTest(void);
 
 eTestStatus ADC_ElecFenceTest(void);
+eTestStatus HV_FWTest(void);
 void ButtonsHandler(void);
 void EnterStopMode(void);
 void DebugProbeInit(void);
@@ -165,7 +166,6 @@ void DebugProbeInit(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
 /* USER CODE END 0 */
 
 /**
@@ -174,36 +174,36 @@ void DebugProbeInit(void);
   */
 int main(void)
 {
-  /* USER CODE BEGIN 1 */
+	/* USER CODE BEGIN 1 */
 
-  /* USER CODE END 1 */
+	/* USER CODE END 1 */
 
-  /* MCU Configuration--------------------------------------------------------*/
+	/* MCU Configuration--------------------------------------------------------*/
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+	HAL_Init();
 
-  /* USER CODE BEGIN Init */
-  /* USER CODE END Init */
+	/* USER CODE BEGIN Init */
+	/* USER CODE END Init */
 
-  /* Configure the system clock */
-  SystemClock_Config();
+	/* Configure the system clock */
+	SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
+	/* USER CODE BEGIN SysInit */
 
-  /* USER CODE END SysInit */
+	/* USER CODE END SysInit */
 
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_DMA_Init();
-  MX_USART1_UART_Init();
-  MX_RF_Init();
-  MX_RTC_Init();
-  MX_I2C1_Init();
-  MX_LPUART1_UART_Init();
-  MX_TIM16_Init();
-  MX_ADC1_Init();
-  /* USER CODE BEGIN 2 */
+	/* Initialize all configured peripherals */
+	MX_GPIO_Init();
+	MX_DMA_Init();
+	MX_USART1_UART_Init();
+	MX_RF_Init();
+	MX_RTC_Init();
+	MX_I2C1_Init();
+	MX_LPUART1_UART_Init();
+	MX_TIM16_Init();
+	MX_ADC1_Init();
+	/* USER CODE BEGIN 2 */
 
 	#if DEBUG_ITM
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -256,12 +256,13 @@ int main(void)
 		#if BLE_TEST
 		UTIL_SEQ_Run(~0);
 		#endif  /* End of BLE_TEST */
+		HV_FWTest();
 
 		#if ADC_ELECFENCE_TEST
-//		GPIOB->ODR ^= LED_G_Pin;
+		GPIOB->ODR ^= LED_G_Pin;
 		ADC_ElecFenceTest();
-//		GPIOB->ODR ^= LED_G_Pin;
-//		printf("HV %d (mV)\n", g_max_hv);
+		GPIOB->ODR ^= LED_G_Pin;
+		printf("HV %d (mV)\n", g_max_hv);
 		#endif  /* End of ADC_ELECFENCE_TEST */
 	}
 	/* USER CODE END 3 */
@@ -273,74 +274,68 @@ int main(void)
   */
 void SystemClock_Config(void)
 {
-  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
+	RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+	RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+	RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
 
-  /** Configure LSE Drive Capability
-  */
-  HAL_PWR_EnableBkUpAccess();
-  __HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
-  /** Configure the main internal regulator output voltage
-  */
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
-  /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE
-                              |RCC_OSCILLATORTYPE_LSE;
-  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.LSEState = RCC_LSE_ON;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = RCC_PLLM_DIV2;
-  RCC_OscInitStruct.PLL.PLLN = 8;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-  RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
-  RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Configure the SYSCLKSource, HCLK, PCLK1 and PCLK2 clocks dividers
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK4|RCC_CLOCKTYPE_HCLK2
-                              |RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
-  RCC_ClkInitStruct.AHBCLK2Divider = RCC_SYSCLK_DIV2;
-  RCC_ClkInitStruct.AHBCLK4Divider = RCC_SYSCLK_DIV1;
+	/** Configure LSE Drive Capability
+	 */
+	HAL_PWR_EnableBkUpAccess();
+	__HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
+	/** Configure the main internal regulator output voltage
+	 */
+	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+	/** Initializes the RCC Oscillators according to the specified parameters
+	 * in the RCC_OscInitTypeDef structure.
+	 */
+	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE
+			|RCC_OSCILLATORTYPE_LSE;
+	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+	RCC_OscInitStruct.LSEState = RCC_LSE_ON;
+	RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+	RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	/** Configure the SYSCLKSource, HCLK, PCLK1 and PCLK2 clocks dividers
+	 */
+	RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK4|RCC_CLOCKTYPE_HCLK2
+			|RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+			|RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSE;
+	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+	RCC_ClkInitStruct.AHBCLK2Divider = RCC_SYSCLK_DIV1;
+	RCC_ClkInitStruct.AHBCLK4Divider = RCC_SYSCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Initializes the peripherals clocks
-  */
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SMPS|RCC_PERIPHCLK_RFWAKEUP
-                              |RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART1
-                              |RCC_PERIPHCLK_LPUART1|RCC_PERIPHCLK_I2C1
-                              |RCC_PERIPHCLK_ADC;
-  PeriphClkInitStruct.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
-  PeriphClkInitStruct.Lpuart1ClockSelection = RCC_LPUART1CLKSOURCE_PCLK1;
-  PeriphClkInitStruct.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
-  PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_SYSCLK;
-  PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
-  PeriphClkInitStruct.RFWakeUpClockSelection = RCC_RFWKPCLKSOURCE_LSE;
-  PeriphClkInitStruct.SmpsClockSelection = RCC_SMPSCLKSOURCE_HSI;
-  PeriphClkInitStruct.SmpsDivSelection = RCC_SMPSCLKDIV_RANGE1;
-  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN Smps */
+	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	/** Initializes the peripherals clocks
+	 */
+	PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SMPS|RCC_PERIPHCLK_RFWAKEUP
+			|RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART1
+			|RCC_PERIPHCLK_LPUART1|RCC_PERIPHCLK_I2C1
+			|RCC_PERIPHCLK_ADC;
+	PeriphClkInitStruct.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
+	PeriphClkInitStruct.Lpuart1ClockSelection = RCC_LPUART1CLKSOURCE_PCLK1;
+	PeriphClkInitStruct.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
+	PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_SYSCLK;
+	PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
+	PeriphClkInitStruct.RFWakeUpClockSelection = RCC_RFWKPCLKSOURCE_LSE;
+	PeriphClkInitStruct.SmpsClockSelection = RCC_SMPSCLKSOURCE_HSI;
+	PeriphClkInitStruct.SmpsDivSelection = RCC_SMPSCLKDIV_RANGE1;
+	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	/* USER CODE BEGIN Smps */
 
-  /* USER CODE END Smps */
+	/* USER CODE END Smps */
 }
 
 /* USER CODE BEGIN 4 */
@@ -1108,16 +1103,16 @@ void ADC_PowerInit()
 	hadc1.Init.LowPowerAutoWait = DISABLE;
 	hadc1.Init.ContinuousConvMode = DISABLE;
 	hadc1.Init.NbrOfConversion = 3;
-	hadc1.Init.DiscontinuousConvMode = ENABLE;
+	hadc1.Init.DiscontinuousConvMode = DISABLE;
 	hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
 	hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
 	hadc1.Init.DMAContinuousRequests = DISABLE;
 	hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
-//	hadc1.Init.OversamplingMode = ENABLE;
-//	hadc1.Init.Oversampling.Ratio = ADC_OVERSAMPLING_RATIO_16;
-//	hadc1.Init.Oversampling.RightBitShift = ADC_RIGHTBITSHIFT_NONE;
-//	hadc1.Init.Oversampling.TriggeredMode = ADC_TRIGGEREDMODE_SINGLE_TRIGGER;
-//	hadc1.Init.Oversampling.OversamplingStopReset = ADC_REGOVERSAMPLING_CONTINUED_MODE;
+	hadc1.Init.OversamplingMode = ENABLE;
+	hadc1.Init.Oversampling.Ratio = ADC_OVERSAMPLING_RATIO_16;
+	hadc1.Init.Oversampling.RightBitShift = ADC_RIGHTBITSHIFT_4;
+	hadc1.Init.Oversampling.TriggeredMode = ADC_TRIGGEREDMODE_SINGLE_TRIGGER;
+	hadc1.Init.Oversampling.OversamplingStopReset = ADC_REGOVERSAMPLING_CONTINUED_MODE;
 	if (HAL_ADC_Init(&hadc1) != HAL_OK)
 	{
 		Error_Handler();
@@ -1153,6 +1148,66 @@ void ADC_PowerInit()
 
 }
 
+void ADC_HVInit()
+{
+	g_useddma = false;
+	g_newadcdata = false;
+	ADC_ChannelConfTypeDef sConfig = {0};
+	HAL_ADC_DeInit(&hadc1);
+	hadc1.Instance = ADC1;
+	hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+	hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+	hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+	hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
+	hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+	hadc1.Init.LowPowerAutoWait = DISABLE;
+	hadc1.Init.ContinuousConvMode = DISABLE;
+	hadc1.Init.NbrOfConversion = 3;
+	hadc1.Init.DiscontinuousConvMode = DISABLE;
+	hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+	hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+	hadc1.Init.DMAContinuousRequests = DISABLE;
+	hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+	hadc1.Init.OversamplingMode = ENABLE;
+	hadc1.Init.Oversampling.Ratio = ADC_OVERSAMPLING_RATIO_8;
+	hadc1.Init.Oversampling.RightBitShift = ADC_RIGHTBITSHIFT_3;
+	hadc1.Init.Oversampling.TriggeredMode = ADC_TRIGGEREDMODE_SINGLE_TRIGGER;
+	hadc1.Init.Oversampling.OversamplingStopReset = ADC_REGOVERSAMPLING_CONTINUED_MODE;
+	if (HAL_ADC_Init(&hadc1) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	/** Configure Regular Channel
+	 */
+	 sConfig.Channel = ADC_CHANNEL_VREFINT;
+	 sConfig.Rank = ADC_REGULAR_RANK_1;
+	 sConfig.SamplingTime = ADC_SAMPLETIME_47CYCLES_5;
+	 sConfig.SingleDiff = ADC_SINGLE_ENDED;
+	 sConfig.OffsetNumber = ADC_OFFSET_NONE;
+	 sConfig.Offset = 0;
+	 if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+	 {
+		 Error_Handler();
+	 }
+	 /** Configure Regular Channel
+	  */
+	 sConfig.Channel = ADC_CHANNEL_9;
+	 sConfig.Rank = ADC_REGULAR_RANK_2;
+	 if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+	 {
+		 Error_Handler();
+	 }
+	 /** Configure Regular Channel
+	  */
+	 sConfig.Channel = ADC_CHANNEL_15;
+	 sConfig.Rank = ADC_REGULAR_RANK_3;
+	 if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+	 {
+		 Error_Handler();
+	 }
+
+}
+
 void ADC_ElecFenceInit()
 {
 	ADC_ChannelConfTypeDef sConfig = {0};
@@ -1170,7 +1225,7 @@ void ADC_ElecFenceInit()
 	hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
 	hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
 	hadc1.Init.DMAContinuousRequests = ENABLE;
-	hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+	hadc1.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
 	hadc1.Init.OversamplingMode = DISABLE;
 	if (HAL_ADC_Init(&hadc1) != HAL_OK)
 	{
@@ -1195,6 +1250,29 @@ void ADC_ElecFenceInit()
 	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
 	{
 		Error_Handler();
+	}
+}
+
+uint32_t g_adc_pos=0;
+uint32_t g_adc_neg=0;
+eTestStatus HV_FWTest(void)
+{
+	ADC_HVInit();
+	HAL_Delay(100);
+	while(1)
+	{
+		g_newadcdata = false;
+		HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+		HAL_ADC_Start_IT(&hadc1);
+		while(g_newadcdata != true);
+		HAL_ADC_Stop_IT(&hadc1);
+		g_ui32vref = __LL_ADC_CALC_VREFANALOG_VOLTAGE(g_ui32ADCraw[0], ADC_RESOLUTION_12B);
+		g_adc_pos= __LL_ADC_CALC_DATA_TO_VOLTAGE(g_ui32vref, g_ui32ADCraw[1], ADC_RESOLUTION_12B);
+		g_adc_neg= __LL_ADC_CALC_DATA_TO_VOLTAGE(g_ui32vref, g_ui32ADCraw[2], ADC_RESOLUTION_12B);
+		g_newadcdata = false;
+		#if !ENDLESS_ADC_HV_MEASURING
+		break;
+		#endif /*End of ENDLESS_ADC_HV_MEASURING*/
 	}
 }
 
@@ -1247,8 +1325,6 @@ uint32_t GetLargest(uint32_t* p_arr, uint32_t len)
     return max;
 }
 
-
-
 eTestStatus ADC_ElecFenceTest(void)
 {
 	ADCElecFence_Test = RET_FAIL;
@@ -1299,32 +1375,28 @@ eTestStatus ADC_ElecFenceTest(void)
 	return ADCElecFence_Test;
 }
 
-
+void HAL_ADC_ErrorCallback(ADC_HandleTypeDef *hadc)
+{
+	__HAL_ADC_CLEAR_FLAG(hadc, ADC_FLAG_OVR);
+}
 
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
 {
-//	GPIOB->ODR ^= LED_G_Pin;
 	g_flag_dmahalf = true;
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
-	if(g_useddma == true)	 /* High voltage measuring */
+	if(LL_ADC_IsActiveFlag_EOS(ADC1) != 0)  /* EOS event */
 	{
-//		GPIOB->ODR ^= LED_G_Pin;
-		g_flag_dmafull = true;
-//		HAL_ADC_Stop_DMA(&hadc1);
+		g_ui32ADCraw[2] = HAL_ADC_GetValue(&hadc1);
+		g_newadcdata = true;
 	}
-	else					/* Vref, vbat, U12V measuring */
+	else									/* EOC event */
 	{
-		if(LL_ADC_IsActiveFlag_EOS(ADC1) != 0)  /* EOS event */
+		static uint8_t eoc_count=0;
+		if(LL_ADC_IsActiveFlag_EOC(ADC1) != 0)
 		{
-			g_ui32ADCraw[2] = HAL_ADC_GetValue(&hadc1);
-			g_newadcdata = true;
-		}
-		else									/* EOC event */
-		{
-			static uint8_t eoc_count=0;
 			if(eoc_count == 0)
 			{
 				g_ui32ADCraw[0] = HAL_ADC_GetValue(&hadc1);
@@ -1336,8 +1408,8 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 				eoc_count=0;
 			}
 		}
-
 	}
+
 }
 
 /**************************************************************************************/
