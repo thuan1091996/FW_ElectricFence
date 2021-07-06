@@ -166,179 +166,6 @@ void DebugProbeInit(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-/* USER CODE END 0 */
-
-/**
-  * @brief  The application entry point.
-  * @retval int
-  */
-int main(void)
-{
-	/* USER CODE BEGIN 1 */
-
-	/* USER CODE END 1 */
-
-	/* MCU Configuration--------------------------------------------------------*/
-
-	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-	HAL_Init();
-
-	/* USER CODE BEGIN Init */
-	/* USER CODE END Init */
-
-	/* Configure the system clock */
-	SystemClock_Config();
-
-	/* USER CODE BEGIN SysInit */
-
-	/* USER CODE END SysInit */
-
-	/* Initialize all configured peripherals */
-	MX_GPIO_Init();
-	MX_DMA_Init();
-	MX_USART1_UART_Init();
-	MX_RF_Init();
-	MX_RTC_Init();
-	MX_I2C1_Init();
-	MX_LPUART1_UART_Init();
-	MX_TIM16_Init();
-	MX_ADC1_Init();
-	/* USER CODE BEGIN 2 */
-
-	#if DEBUG_ITM
-	GPIO_InitTypeDef GPIO_InitStruct = {0};
-	GPIO_InitStruct.Pin = LED_R_Pin;
-	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-	GPIO_InitStruct.Pull = GPIO_NOPULL;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-	HAL_GPIO_Init(LED_R_GPIO_Port, &GPIO_InitStruct);
-	#endif  /* End of DEBUG_ITM */
-
-	HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
-	HAL_Delay(500);
-	#if ENDLESS_HV_MEASURING
-	while(1)
-	{
-		ADC_ElecFenceTest();
-	}
-	#endif  /* End of ENDLESS_HV_MEASURING */
-	Sys_Test();
-
-	/************** Electrical fence testing ***************/
-	printf("Electrical fence testing... \n");
-	for (int count = 0; count < 10; ++count)
-	{
-		HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
-		HAL_Delay(100);
-		#if !DEBUG_ITM
-		HAL_GPIO_TogglePin(LED_R_GPIO_Port, LED_R_Pin);
-		#endif  /* End of DEBUG_ITM */
-		HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
-		HAL_Delay(100);
-	}
-	/*******************************************************/
-	/* USER CODE END 2 */
-
-	/* Init code for STM32_WPAN */
-	#if BLE_TEST
-	APPE_Init();
-	g_testingble = true;
-	printf("Testing BLE function (including button test)\n");
-	#endif  /* End of BLE_TEST */
-
-	/* Infinite loop */
-	/* USER CODE BEGIN WHILE */
-	while (1)
-	{
-		/* USER CODE END WHILE */
-
-		/* USER CODE BEGIN 3 */
-		#if BLE_TEST
-		UTIL_SEQ_Run(~0);
-		#endif  /* End of BLE_TEST */
-		HV_FWTest();
-
-		#if ADC_ELECFENCE_TEST
-		GPIOB->ODR ^= LED_G_Pin;
-		ADC_ElecFenceTest();
-		GPIOB->ODR ^= LED_G_Pin;
-		printf("HV %d (mV)\n", g_max_hv);
-		#endif  /* End of ADC_ELECFENCE_TEST */
-	}
-	/* USER CODE END 3 */
-}
-
-/**
-  * @brief System Clock Configuration
-  * @retval None
-  */
-void SystemClock_Config(void)
-{
-	RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-	RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-	RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
-
-	/** Configure LSE Drive Capability
-	 */
-	HAL_PWR_EnableBkUpAccess();
-	__HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
-	/** Configure the main internal regulator output voltage
-	 */
-	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
-	/** Initializes the RCC Oscillators according to the specified parameters
-	 * in the RCC_OscInitTypeDef structure.
-	 */
-	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE
-			|RCC_OSCILLATORTYPE_LSE;
-	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-	RCC_OscInitStruct.LSEState = RCC_LSE_ON;
-	RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-	RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
-	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-	{
-		Error_Handler();
-	}
-	/** Configure the SYSCLKSource, HCLK, PCLK1 and PCLK2 clocks dividers
-	 */
-	RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK4|RCC_CLOCKTYPE_HCLK2
-			|RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-			|RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSE;
-	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
-	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
-	RCC_ClkInitStruct.AHBCLK2Divider = RCC_SYSCLK_DIV1;
-	RCC_ClkInitStruct.AHBCLK4Divider = RCC_SYSCLK_DIV1;
-
-	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
-	{
-		Error_Handler();
-	}
-	/** Initializes the peripherals clocks
-	 */
-	PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SMPS|RCC_PERIPHCLK_RFWAKEUP
-			|RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART1
-			|RCC_PERIPHCLK_LPUART1|RCC_PERIPHCLK_I2C1
-			|RCC_PERIPHCLK_ADC;
-	PeriphClkInitStruct.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
-	PeriphClkInitStruct.Lpuart1ClockSelection = RCC_LPUART1CLKSOURCE_PCLK1;
-	PeriphClkInitStruct.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
-	PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_SYSCLK;
-	PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
-	PeriphClkInitStruct.RFWakeUpClockSelection = RCC_RFWKPCLKSOURCE_LSE;
-	PeriphClkInitStruct.SmpsClockSelection = RCC_SMPSCLKSOURCE_HSI;
-	PeriphClkInitStruct.SmpsDivSelection = RCC_SMPSCLKDIV_RANGE1;
-	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
-	{
-		Error_Handler();
-	}
-	/* USER CODE BEGIN Smps */
-
-	/* USER CODE END Smps */
-}
-
-/* USER CODE BEGIN 4 */
 /**************************************************************************************/
 /* Main FW Test */
 eTestStatus Sys_Test(void)
@@ -762,8 +589,11 @@ eTestStatus ACL_FWTest(void)
 #endif
 
 #define MAX_REJOIN				10
+#define MAX_RESEND_CMD			5
+#define MAX_TIMEOUT_RECV		2000 /*2s*/
 #define RAK_RESP_OK				"OK"
 #define	RAK_RESP_NOTOK			"ERROR"
+
 
 /* LoRa commands */
 const char* LoRaInitCommands[] =
@@ -796,6 +626,42 @@ uint8_t g_rxdmabuffer[RX_DMABUF_LEN]={0};
 volatile bool g_dmaoverflow=false;
 volatile bool g_dmanewdata=false;
 #define TEST_DMA	1
+
+bool LoRa_SendCMD(uint8_t* p_cmd, uint16_t len, uint16_t timeout)
+{
+	for (int retry_count = 0; retry_count < MAX_RESEND_CMD; retry_count++)
+	{
+		//Clear buffer before receive new response
+		memset(g_lora_datarecv, 0, RX_BUF_LEN);
+		//Send commands and wait for response in case of successfully transmit command
+		if (HAL_UART_Transmit(&hlpuart1, p_cmd, len, 100) == HAL_OK)
+		{
+			printf("Sent successfully command: %s",p_cmd);
+			HAL_Delay(timeout);
+			if(g_dmanewdata == true)
+			{
+				if(strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) != NULL)
+				{
+					printf("OK \n");
+					g_dmanewdata = false;
+					return true;
+				}
+				g_dmanewdata = false;
+				printf("Retry %d \n", retry_count + 1);
+			}
+			else
+			{
+				printf("No received response after %d ms\n", timeout);
+			}
+		}
+		else
+		{
+			printf("UART transmitted failed \n");
+		}
+	}
+	return false;
+}
+
 eTestStatus LORA_FWTest(void)
 {
 	LORA_test = RET_FAIL;
@@ -805,171 +671,56 @@ eTestStatus LORA_FWTest(void)
 	#if DEBUG_AT_UART
 	HAL_GPIO_DeInit(GPIOA, GPIO_PIN_2);
 	HAL_GPIO_DeInit(GPIOA, GPIO_PIN_3);
-	#endif	/* End of DEBUG_AT_UART  */
+	#else
 	__HAL_UART_ENABLE_IT(&hlpuart1,UART_IT_IDLE); 					/* Enable UART RX Idle interrupt */
 	HAL_UART_Receive_DMA(&hlpuart1, g_rxdmabuffer, RX_DMABUF_LEN);  /* Enable receive data via DMA */
-	if(g_LoRaInit == false) //Init LoRa & LoRaWan parameter in case not initialized yet
+	if(g_LoRaInit == false)
 	{
+		//Init LoRa & LoRaWan parameter in case not initialized yet
 		printf("Configuring RAK4200 \r\n");
-		for(int command_count = 0; command_count < INIT_COMMANDS; ) /* Send devices initial commands */
+		for(int command_count = 0; command_count < INIT_COMMANDS; command_count++) /* Send devices initial commands */
 		{
-			//Clear buffer before receive new response
-			memset(g_lora_datarecv, 0, RX_BUF_LEN);
-			//Send commands and wait for response in case of successfully transmit command
-			if(HAL_UART_Transmit(&hlpuart1, (uint8_t*)LoRaInitCommands[command_count], strlen(LoRaInitCommands[command_count]), 100) == HAL_OK)
+			if (LoRa_SendCMD((uint8_t*)LoRaInitCommands[command_count], strlen(LoRaInitCommands[command_count]), MAX_TIMEOUT_RECV) != true)
 			{
-				HAL_Delay(500);
-				if(g_dmanewdata == true)
-				{
-					// Response OK
-					if(strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) != NULL)
-					{
-						command_count++;
-					}
-					// Response NOT OK
-					else if (strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_NOTOK) != NULL)
-					{
-					}
-					g_dmanewdata = false;
-					HAL_Delay(100);
-				}
+				printf("Configure device failed \r\n");
+				return RET_FAIL;
 			}
 		}
-		printf("Configure device successfully\r\n");
-		LoRa_curState = DEVICE_STATE_STARTED;
-		g_LoRaInit = true;
 	}
-	if(LoRa_curState != DEVICE_STATE_STARTED) {printf("Test LoRa failed \n"); return LORA_test;}
+	printf("Configure device successfully\r\n");
+	LoRa_curState = DEVICE_STATE_STARTED;
+	g_LoRaInit = true;
+
 	#if LORAWAN_TEST
 	printf("Joining ... \n");
-	for (int retry_count = 0; retry_count < MAX_REJOIN; ++retry_count)
+	if( LoRa_SendCMD((uint8_t*)RAK4200_JOIN, strlen(RAK4200_JOIN), MAX_TIMEOUT_RECV*5) != true)
 	{
-		memset(g_lora_datarecv, 0, RX_BUF_LEN);
-		HAL_Delay(10000);
-		if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_JOIN, strlen(RAK4200_JOIN), 100) == HAL_OK)
-		{
-			if(g_dmanewdata == true)
-			{
-				// Response OK
-				if (strstr( (const char*)g_lora_datarecv, (const char*)"Join Success") != NULL)
-				{
-					LoRa_curState = DEVICE_STATE_JOINED;
-					printf("Joined successfully\n");
-					g_dmanewdata = false;
-					HAL_Delay(100);
-					break;
-				}
-				// Response NOT OK
-				printf("Re-joining %d \r\n",retry_count);
-				g_dmanewdata = false;
-				HAL_Delay(100);
-			}
-		}
+		printf("Join failed \n");
+		return RET_FAIL;
 	}
-	// Testing transfer data (up/downlink messages)
-	#if TEST_DMA
-	if(LoRa_curState == DEVICE_STATE_JOINED)
-	{
-		printf("Sending uplink\n");
-		for (int retry_count = 0; retry_count < MAX_REJOIN; )
-		{
-			memset(g_lora_datarecv, 0, RX_BUF_LEN);
-			HAL_Delay(5000);
-			if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_SENDTEST, strlen(RAK4200_SENDTEST), 100) == HAL_OK)
-			{
-				if(g_dmanewdata == true)
-				{
-					retry_count++;
-					// Response OK
-					if(strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) != NULL)
-					{
-						printf("Send uplink completed\n");
-						g_dmanewdata = false;
-						break;
-					}
-					printf("Re-send uplink %d \n", retry_count);
-					g_dmanewdata = false;
-					HAL_Delay(100);
-				}
-			}
-		}
-	}
-	#else
-	uint8_t lora_dataindex;
-	uint8_t lora_datarecv=0;
-	if(LoRa_curState == DEVICE_STATE_JOINED)
-	{
-		for (int retry_count = 0; retry_count < MAX_REJOIN; ++retry_count)
-		{
-			memset(g_lora_datarecv, 0, RX_BUF_LEN);
-			lora_dataindex = 0;
-			if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_SENDTEST, strlen(RAK4200_SENDTEST), 100) == HAL_OK)
-			{
-				do
-				{
-					if( (HAL_UART_Receive_IT(&hlpuart1, &lora_datarecv, 1) == HAL_OK))
-					{
-						g_lora_datarecv[lora_dataindex++] = lora_datarecv;
-					}
-				}while( (strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) == NULL));
-				if( (strstr( (const char*)g_lora_datarecv, (const char*)"at+send")) != NULL)
-				#if !TEST_DOWNLINK //Since this will cause losing downlink data
-				{
-					printf("Send uplink completed\n");
-					break;
-				}
-				#else	//Test downlink
-				{
-					do
-					{
-						if(HAL_UART_Receive_IT(&hlpuart1, &lora_datarecv, 1) == HAL_OK)
-						{
-							g_lora_datarecv[lora_dataindex++] = lora_datarecv;
-						}
-					}
+	printf("Joined successfully \n");
 
-					while ( (strstr( (const char*)g_lora_datarecv, (const char*)"at+recv") == NULL));
-					printf("Send uplink completed\n");
-					if((strstr( (const char*)g_lora_datarecv, (const char*)"at+recv") != NULL))
-					{
-						printf("Receive downlink\n");
-						HAL_UART_Transmit(&huart1, g_lora_datarecv, strlen(g_lora_datarecv), 100);
-					}
-				}
-				#endif /*End of !TEST_DOWNLINK*/
-			}
-		}
+	printf("Sending uplink\n");
+	if( LoRa_SendCMD((uint8_t*)RAK4200_SENDTEST, strlen(RAK4200_SENDTEST), MAX_TIMEOUT_RECV*3) != true)
+	{
+		printf("Send up-link failed\n");
+		return RET_FAIL;
 	}
-	#endif /*End of TEST_DMA*/
+	printf("Sent up-link successfully\n");
 	#endif  /* End of LORAWAN_TEST */
-	#if TEST_SLEEPLORA
-	for (int retry_count = 0; retry_count < 1; retry_count++)
-	{
-		memset(g_lora_datarecv, 0, RX_BUF_LEN);
-		HAL_Delay(1000);
-		if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_SLEEP, strlen(RAK4200_SLEEP), 100) == HAL_OK)
-		{
-			if(g_dmanewdata == true)
-			{
-				// Response OK
-				if(strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) != NULL)
-				{
-					printf("RAK4200 was slept\n");
-					LORA_test = true;
-					g_dmanewdata = false;
-					break;
-				}
-				g_dmanewdata = false;
-				printf("Retry to put RAK4200 to sleep\n");
-				HAL_Delay(100);
-			}
-		}
-	}
-	#endif /*End of TEST_SLEEPLORA*/
-#else
-	printf("----- Skipped test ----- \n");
 
-#endif /* End of LORA_TEST */
+	#if TEST_SLEEPLORA
+	if( LoRa_SendCMD((uint8_t*)RAK4200_SLEEP, strlen(RAK4200_SLEEP), MAX_TIMEOUT_RECV) != true)
+	{
+		printf("Failed to put RAK4200 into sleep mode \n");
+		return RET_FAIL;
+	}
+	printf("RAK4200 was slept\n");
+	#endif /*End of TEST_SLEEPLORA*/
+	#endif	/* End of DEBUG_AT_UART  */
+	#else
+	printf("----- Skipped test ----- \n");
+	#endif /* End of LORA_TEST */
 	return LORA_test;
 }
 
@@ -1277,6 +1028,7 @@ eTestStatus HV_FWTest(void)
 		break;
 		#endif /*End of ENDLESS_ADC_HV_MEASURING*/
 	}
+	return RET_OK;
 }
 
 eTestStatus ADC_FWTest(void)
@@ -1566,6 +1318,179 @@ HAL_StatusTypeDef I2C_Transferring(tI2CPackage *I2CPackage_T)
 }
 
 /**************************************************************************************/
+/* USER CODE END 0 */
+
+/**
+  * @brief  The application entry point.
+  * @retval int
+  */
+int main(void)
+{
+	/* USER CODE BEGIN 1 */
+
+	/* USER CODE END 1 */
+
+	/* MCU Configuration--------------------------------------------------------*/
+
+	/* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+	HAL_Init();
+
+	/* USER CODE BEGIN Init */
+	/* USER CODE END Init */
+
+	/* Configure the system clock */
+	SystemClock_Config();
+
+	/* USER CODE BEGIN SysInit */
+
+	/* USER CODE END SysInit */
+
+	/* Initialize all configured peripherals */
+	MX_GPIO_Init();
+	MX_DMA_Init();
+	MX_USART1_UART_Init();
+	MX_RF_Init();
+	MX_RTC_Init();
+	MX_I2C1_Init();
+	MX_LPUART1_UART_Init();
+	MX_TIM16_Init();
+	MX_ADC1_Init();
+	/* USER CODE BEGIN 2 */
+
+	#if DEBUG_ITM
+	GPIO_InitTypeDef GPIO_InitStruct = {0};
+	GPIO_InitStruct.Pin = LED_R_Pin;
+	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+	HAL_GPIO_Init(LED_R_GPIO_Port, &GPIO_InitStruct);
+	#endif  /* End of DEBUG_ITM */
+
+	HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
+	HAL_Delay(500);
+	#if ENDLESS_HV_MEASURING
+	while(1)
+	{
+		ADC_ElecFenceTest();
+	}
+	#endif  /* End of ENDLESS_HV_MEASURING */
+	Sys_Test();
+
+	/************** Electrical fence testing ***************/
+	printf("Electrical fence testing... \n");
+	for (int count = 0; count < 10; ++count)
+	{
+		HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
+		HAL_Delay(100);
+		#if !DEBUG_ITM
+		HAL_GPIO_TogglePin(LED_R_GPIO_Port, LED_R_Pin);
+		#endif  /* End of DEBUG_ITM */
+		HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
+		HAL_Delay(100);
+	}
+	/*******************************************************/
+	/* USER CODE END 2 */
+
+	/* Init code for STM32_WPAN */
+	#if BLE_TEST
+	APPE_Init();
+	g_testingble = true;
+	printf("Testing BLE function (including button test)\n");
+	#endif  /* End of BLE_TEST */
+
+	/* Infinite loop */
+	/* USER CODE BEGIN WHILE */
+	while (1)
+	{
+		/* USER CODE END WHILE */
+
+		/* USER CODE BEGIN 3 */
+		#if BLE_TEST
+		UTIL_SEQ_Run(~0);
+		#endif  /* End of BLE_TEST */
+		HV_FWTest();
+
+		#if ADC_ELECFENCE_TEST
+		GPIOB->ODR ^= LED_G_Pin;
+		ADC_ElecFenceTest();
+		GPIOB->ODR ^= LED_G_Pin;
+		printf("HV %d (mV)\n", g_max_hv);
+		#endif  /* End of ADC_ELECFENCE_TEST */
+	}
+	/* USER CODE END 3 */
+}
+
+/**
+  * @brief System Clock Configuration
+  * @retval None
+  */
+void SystemClock_Config(void)
+{
+	RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+	RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+	RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
+
+	/** Configure LSE Drive Capability
+	 */
+	HAL_PWR_EnableBkUpAccess();
+	__HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
+	/** Configure the main internal regulator output voltage
+	 */
+	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+	/** Initializes the RCC Oscillators according to the specified parameters
+	 * in the RCC_OscInitTypeDef structure.
+	 */
+	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE
+			|RCC_OSCILLATORTYPE_LSE;
+	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+	RCC_OscInitStruct.LSEState = RCC_LSE_ON;
+	RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+	RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	/** Configure the SYSCLKSource, HCLK, PCLK1 and PCLK2 clocks dividers
+	 */
+	RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK4|RCC_CLOCKTYPE_HCLK2
+			|RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+			|RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSE;
+	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+	RCC_ClkInitStruct.AHBCLK2Divider = RCC_SYSCLK_DIV1;
+	RCC_ClkInitStruct.AHBCLK4Divider = RCC_SYSCLK_DIV1;
+
+	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	/** Initializes the peripherals clocks
+	 */
+	PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SMPS|RCC_PERIPHCLK_RFWAKEUP
+			|RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART1
+			|RCC_PERIPHCLK_LPUART1|RCC_PERIPHCLK_I2C1
+			|RCC_PERIPHCLK_ADC;
+	PeriphClkInitStruct.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
+	PeriphClkInitStruct.Lpuart1ClockSelection = RCC_LPUART1CLKSOURCE_PCLK1;
+	PeriphClkInitStruct.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
+	PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_SYSCLK;
+	PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
+	PeriphClkInitStruct.RFWakeUpClockSelection = RCC_RFWKPCLKSOURCE_LSE;
+	PeriphClkInitStruct.SmpsClockSelection = RCC_SMPSCLKSOURCE_HSI;
+	PeriphClkInitStruct.SmpsDivSelection = RCC_SMPSCLKDIV_RANGE1;
+	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
+	{
+		Error_Handler();
+	}
+	/* USER CODE BEGIN Smps */
+
+	/* USER CODE END Smps */
+}
+
+/* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
 
