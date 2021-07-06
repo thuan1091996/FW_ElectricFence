@@ -22,7 +22,7 @@
 #include "utilities_common.h"
 #include "stm_queue.h"
 #include "dbg_trace.h"
-
+#include "main.h"
 /* Definition of the function */
 #if !defined(__GNUC__)  /* SW4STM32 */
 size_t __write(int handle, const unsigned char * buf, size_t bufSize);
@@ -225,10 +225,13 @@ void DbgTraceInit( void )
  * @param	...: arguments to be formatted in format string
  * @retval none
  */
+#if DEBUG_CONSOLE
+#else
 __weak size_t _write(int handle, const unsigned char * buf, size_t bufSize)
 {
   return ( DbgTraceWrite(handle, buf, bufSize) );
 }
+#endif  /* End of DEBUG_CONSOLE */
 
 #else
 /**

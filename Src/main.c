@@ -799,14 +799,13 @@ volatile bool g_dmanewdata=false;
 eTestStatus LORA_FWTest(void)
 {
 	LORA_test = RET_FAIL;
-#if LORA_TEST
-	HAL_Delay(1000);
 	HAL_GPIO_WritePin(RAK_EN_GPIO_Port, RAK_EN_Pin, GPIO_PIN_SET);
 	HAL_Delay(2000);												//Wait for stable
-#if DEBUG_AT_UART
+	#if LORA_TEST
+	#if DEBUG_AT_UART
 	HAL_GPIO_DeInit(GPIOA, GPIO_PIN_2);
 	HAL_GPIO_DeInit(GPIOA, GPIO_PIN_3);
-#else 															/* End of DEBUG_AT_UART  */
+	#endif	/* End of DEBUG_AT_UART  */
 	__HAL_UART_ENABLE_IT(&hlpuart1,UART_IT_IDLE); 					/* Enable UART RX Idle interrupt */
 	HAL_UART_Receive_DMA(&hlpuart1, g_rxdmabuffer, RX_DMABUF_LEN);  /* Enable receive data via DMA */
 	if(g_LoRaInit == false) //Init LoRa & LoRaWan parameter in case not initialized yet
@@ -841,7 +840,7 @@ eTestStatus LORA_FWTest(void)
 		g_LoRaInit = true;
 	}
 	if(LoRa_curState != DEVICE_STATE_STARTED) {printf("Test LoRa failed \n"); return LORA_test;}
-	//Testing Joining
+	#if LORAWAN_TEST
 	printf("Joining ... \n");
 	for (int retry_count = 0; retry_count < MAX_REJOIN; ++retry_count)
 	{
@@ -868,7 +867,7 @@ eTestStatus LORA_FWTest(void)
 		}
 	}
 	// Testing transfer data (up/downlink messages)
-#if TEST_DMA
+	#if TEST_DMA
 	if(LoRa_curState == DEVICE_STATE_JOINED)
 	{
 		printf("Sending uplink\n");
@@ -885,7 +884,6 @@ eTestStatus LORA_FWTest(void)
 					if(strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) != NULL)
 					{
 						printf("Send uplink completed\n");
-						LORA_test = true;
 						g_dmanewdata = false;
 						break;
 					}
@@ -896,7 +894,7 @@ eTestStatus LORA_FWTest(void)
 			}
 		}
 	}
-#else
+	#else
 	uint8_t lora_dataindex;
 	uint8_t lora_datarecv=0;
 	if(LoRa_curState == DEVICE_STATE_JOINED)
@@ -915,12 +913,12 @@ eTestStatus LORA_FWTest(void)
 					}
 				}while( (strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) == NULL));
 				if( (strstr( (const char*)g_lora_datarecv, (const char*)"at+send")) != NULL)
-#if !TEST_DOWNLINK //Since this will cause losing downlink data
+				#if !TEST_DOWNLINK //Since this will cause losing downlink data
 				{
 					printf("Send uplink completed\n");
 					break;
 				}
-#else	//Test downlink
+				#else	//Test downlink
 				{
 					do
 					{
@@ -938,32 +936,36 @@ eTestStatus LORA_FWTest(void)
 						HAL_UART_Transmit(&huart1, g_lora_datarecv, strlen(g_lora_datarecv), 100);
 					}
 				}
-#endif /*End of !TEST_DOWNLINK*/
+				#endif /*End of !TEST_DOWNLINK*/
 			}
 		}
 	}
-#if TEST_SLEEPLORA
-	for (int retry_count = 0; retry_count < MAX_REJOIN; ++retry_count)
+	#endif /*End of TEST_DMA*/
+	#endif  /* End of LORAWAN_TEST */
+	#if TEST_SLEEPLORA
+	for (int retry_count = 0; retry_count < 1; retry_count++)
 	{
 		memset(g_lora_datarecv, 0, RX_BUF_LEN);
-		lora_dataindex = 0;
+		HAL_Delay(1000);
 		if (HAL_UART_Transmit(&hlpuart1, (uint8_t*) RAK4200_SLEEP, strlen(RAK4200_SLEEP), 100) == HAL_OK)
 		{
-			do
+			if(g_dmanewdata == true)
 			{
-				if( (HAL_UART_Receive_IT(&hlpuart1, &lora_datarecv, 1) == HAL_OK) && (lora_datarecv !=0) )
+				// Response OK
+				if(strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) != NULL)
 				{
-					g_lora_datarecv[lora_dataindex++] = lora_datarecv;
+					printf("RAK4200 was slept\n");
+					LORA_test = true;
+					g_dmanewdata = false;
+					break;
 				}
-			}while( (strstr( (const char*)g_lora_datarecv, (const char*)RAK_RESP_OK) == NULL));
-			printf("LoRa Sleep\n");
-			break;
+				g_dmanewdata = false;
+				printf("Retry to put RAK4200 to sleep\n");
+				HAL_Delay(100);
+			}
 		}
 	}
-#endif /*End of TEST_DMA*/
-#endif /*End of TEST_SLEEPLORA*/
-#endif /* End of DEBUG_AT_UART */
-
+	#endif /*End of TEST_SLEEPLORA*/
 #else
 	printf("----- Skipped test ----- \n");
 
@@ -1257,6 +1259,7 @@ uint32_t g_adc_pos=0;
 uint32_t g_adc_neg=0;
 eTestStatus HV_FWTest(void)
 {
+	HAL_GPIO_WritePin(OPA_SW_GPIO_Port, OPA_SW_Pin, GPIO_PIN_SET);
 	ADC_HVInit();
 	HAL_Delay(100);
 	while(1)
@@ -1462,16 +1465,49 @@ void EnterStopMode( void)
 
 	LL_C2_PWR_SetPowerMode(LL_PWR_MODE_SHUTDOWN);
 	__HAL_RCC_LPUART1_CLK_DISABLE();
+	#if DEBUG_LPOWER
+	LL_DBGMCU_EnableDBGSleepMode();
+	LL_DBGMCU_EnableDBGStopMode();
+	LL_DBGMCU_EnableDBGStandbyMode();
+	#else
+	LL_DBGMCU_DisableDBGSleepMode();
+	LL_DBGMCU_DisableDBGStopMode();
+	LL_DBGMCU_DisableDBGStandbyMode();
+	#endif  /* End of DEBUG_LPOWER */
+
+
 
 	// Module control pins -> low output
 	HAL_GPIO_WritePin(EN_BATT_GPIO_Port, EN_BATT_Pin, GPIO_PIN_RESET);   	/* Turn off Batt */
 	HAL_GPIO_WritePin(EEPROM_EN_GPIO_Port, EEPROM_EN_Pin, GPIO_PIN_RESET); 	/* Turn off EEPROM */
-	HAL_GPIO_WritePin(RAK_EN_GPIO_Port, RAK_EN_Pin, GPIO_PIN_RESET);		/* Turn off RAk4200 */
-
+//	HAL_GPIO_WritePin(RAK_EN_GPIO_Port, RAK_EN_Pin, GPIO_PIN_RESET);		/* Turn off RAk4200 */
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7 | GPIO_PIN_8, GPIO_PIN_RESET);		/* Turn off RAk4200 */
+	HAL_GPIO_WritePin(LED_G_GPIO_Port, LED_G_Pin | LED_R_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(RELAY_EN_GPIO_Port, RELAY_EN_Pin, GPIO_PIN_RESET);
 	// Stop SYSTICK Timer
 	HAL_SuspendTick();
 
+
+	#if !TEST_LPWER
+	GPIO_InitTypeDef GPIO_InitStructure;
+	GPIO_InitStructure.Pin = GPIO_PIN_0;
+	GPIO_InitStructure.Mode = GPIO_MODE_ANALOG;
+	GPIO_InitStructure.Pull = GPIO_NOPULL;
+
+	HAL_GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+
+	// Module control pins -> low output
+	GPIO_InitTypeDef GPIOA_InitStructure;
+	GPIOA_InitStructure.Pin = EN_BATT_Pin| EEPROM_EN_Pin| GPIO_PIN_2| GPIO_PIN_3| RAK_EN_Pin;
+	GPIOA_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIOA_InitStructure.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(GPIOA, &GPIOA_InitStructure);
+	#endif  /* End of !TEST_LPWER */
+
 	// Enter Stop Mode
+
 	HAL_PWREx_EnterSTOP2Mode(PWR_STOPENTRY_WFI);
 
 	//Wake up

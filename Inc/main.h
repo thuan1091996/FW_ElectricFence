@@ -90,6 +90,8 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define TRIGGER_CABLE_GPIO_Port GPIOB
 #define SHUTD_Pin GPIO_PIN_5
 #define SHUTD_GPIO_Port GPIOB
+#define OPA_SW_Pin GPIO_PIN_0
+#define OPA_SW_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 #define USED								1
 #define NOT_USED							0
@@ -98,33 +100,37 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define ENDLESS_LOOP_ACL					NOT_USED
 #define ENDLESS_LOOP_DYP					NOT_USED
 #define ENDLESS_BATT_MEASURING				NOT_USED
-#define ENDLESS_ADC_HV_MEASURING			USED
+#define ENDLESS_ADC_HV_MEASURING			NOT_USED
 #define ENDLESS_HV_MEASURING				NOT_USED
 #define DEBUG_LORA_AT_UART					NOT_USED
 
 #define FW_TEST								USED
-#define EEPROM_TEST 						NOT_USED
-#define	ACL_TEST							NOT_USED
+#define EEPROM_TEST 						USED
+#define	ACL_TEST							USED
 #define GPS_TEST							NOT_USED
 
 #define ADC_ELECFENCE_TEST					NOT_USED
 
-#define ADC_TEST							NOT_USED
+#define ADC_TEST							USED
 
-#define LORA_TEST							NOT_USED
+#define LORA_TEST							USED
+
 #if LORA_TEST
+#define LORAWAN_TEST						USED
+#define TEST_SLEEPLORA						USED
 #define CHANGE_DEVEUI						USED
 #define TEST_DOWNLINK						USED
 #endif  /* End of LORA_TEST */
 
 #define BLE_TEST							NOT_USED
-#define	DISABLE_ACL_IRQ						NOT_USED
+#define	DISABLE_ACL_IRQ						USED
 
 
 #define DEBUG_CONSOLE						USED
-#define DEBUG_UART							NOT_USED
+#define DEBUG_UART							USED
 
-#define DEV_SLEEP							NOT_USED
+#define DEV_SLEEP							USED
+#define DEBUG_LPOWER						NOT_USED
 
 #define PROBE1				GPIO_PIN_11
 #define PROBE2				GPIO_PIN_12
