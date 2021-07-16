@@ -60,7 +60,7 @@ typedef struct{
 
 /* Private variables ---------------------------------------------------------*/
 static const uint8_t SizeHv=4;
-static const uint8_t SizeVbat=4;
+static const uint8_t SizeVbat=2;
 /**
  * START of Section BLE_DRIVER_CONTEXT
  */
@@ -119,106 +119,111 @@ do {\
  */
 static SVCCTL_EvtAckStatus_t Custom_STM_Event_Handler(void *Event)
 {
-  SVCCTL_EvtAckStatus_t return_value;
-  hci_event_pckt *event_pckt;
-  evt_blecore_aci *blecore_evt;
-/* USER CODE BEGIN Custom_STM_Event_Handler_1 */
+	SVCCTL_EvtAckStatus_t return_value;
+	hci_event_pckt *event_pckt;
+	evt_blecore_aci *blecore_evt;
+	/* USER CODE BEGIN Custom_STM_Event_Handler_1 */
 	aci_gatt_attribute_modified_event_rp0    * attribute_modified;
-/* USER CODE END Custom_STM_Event_Handler_1 */
+	Custom_STM_App_Notification_evt_t Client_Request;
+	/* USER CODE END Custom_STM_Event_Handler_1 */
 
-  return_value = SVCCTL_EvtNotAck;
-  event_pckt = (hci_event_pckt *)(((hci_uart_pckt*)Event)->data);
+	return_value = SVCCTL_EvtNotAck;
+	event_pckt = (hci_event_pckt *)(((hci_uart_pckt*)Event)->data);
 
-  switch(event_pckt->evt)
-  {
-    case HCI_VENDOR_SPECIFIC_DEBUG_EVT_CODE:
-      blecore_evt = (evt_blecore_aci*)event_pckt->data;
-      switch(blecore_evt->ecode)
-      {
-
-        case ACI_GATT_ATTRIBUTE_MODIFIED_VSEVT_CODE:
-          /* USER CODE BEGIN EVT_BLUE_GATT_ATTRIBUTE_MODIFIED */
+	switch(event_pckt->evt)
+	{
+		case HCI_VENDOR_SPECIFIC_DEBUG_EVT_CODE:
+			blecore_evt = (evt_blecore_aci*)event_pckt->data;
+			switch(blecore_evt->ecode)
 			{
-				attribute_modified = (aci_gatt_attribute_modified_event_rp0*)blecore_evt->data;
-				if(attribute_modified->Attr_Handle == (CustomContext.CustomHvHdle + 2))	/* High voltage descriptor changed */
+				case ACI_GATT_ATTRIBUTE_MODIFIED_VSEVT_CODE:
+				/* USER CODE BEGIN EVT_BLUE_GATT_ATTRIBUTE_MODIFIED */
 				{
-					/**
-					 * Descriptor handle
-					 */
-					return_value = SVCCTL_EvtAckFlowEnable;
-					/**
-					 * Notify to application
-					 */
-					if(attribute_modified->Attr_Data[0] & COMSVC_Notification)
+					attribute_modified = (aci_gatt_attribute_modified_event_rp0*)blecore_evt->data;
+					if(attribute_modified->Attr_Handle == (CustomContext.CustomHvHdle + 2))	/* High voltage descriptor changed */
 					{
-//						Notification.Template_Evt_Opcode = TEMPLATE_STM_NOTIFY_ENABLED_EVT;
-//						TEMPLATE_STM_App_Notification(&Notification);
+						/**
+						 * Descriptor handle
+						 */
+						return_value = SVCCTL_EvtAckFlowEnable;
+						/**
+						 * Notify to application
+						 */
+						if(attribute_modified->Attr_Data[0] & COMSVC_Notification)
+						{
+//							Client_Request.Custom_Evt_Opcode = TEMPLATE_STM_NOTIFY_ENABLED_EVT;
+//							Custom_STM_App_Notification(&Notification);
+						}
+						else
+						{
+//							Notification.Template_Evt_Opcode = TEMPLATE_STM_NOTIFY_DISABLED_EVT;
+//							TEMPLATE_STM_App_Notification(&Notification);
+						}
 					}
-					else
+					else if(attribute_modified->Attr_Handle == (CustomContext.CustomVbatHdle + 2))	/* VBAT descriptor changed */
 					{
-//						Notification.Template_Evt_Opcode = TEMPLATE_STM_NOTIFY_DISABLED_EVT;
-//						TEMPLATE_STM_App_Notification(&Notification);
+						/**
+						 * Descriptor handle
+						 */
+						return_value = SVCCTL_EvtAckFlowEnable;
+						/**
+						 * Notify to application
+						 */
+						if(attribute_modified->Attr_Data[0] & COMSVC_Notification)
+						{
+							Client_Request.Custom_Evt_Opcode = CUSTOM_STM_VBAT_NOTIFY_ENABLED_EVT;
+							Client_Request.DataTransfered.Length=attribute_modified->Attr_Data_Length;
+							Client_Request.DataTransfered.pPayload=attribute_modified->Attr_Data;
+							Custom_STM_App_Notification(&Client_Request);
+						}
+						else
+						{
+							Client_Request.Custom_Evt_Opcode = CUSTOM_STM_VBAT_NOTIFY_DISABLED_EVT;
+							Client_Request.DataTransfered.Length=attribute_modified->Attr_Data_Length;
+							Client_Request.DataTransfered.pPayload=attribute_modified->Attr_Data;
+							Custom_STM_App_Notification(&Client_Request);
+						}
 					}
 				}
-				else if(attribute_modified->Attr_Handle == (CustomContext.CustomVbatHdle + 2))	/* VBAT descriptor changed */
-				{
-					/**
-					 * Descriptor handle
-					 */
-					return_value = SVCCTL_EvtAckFlowEnable;
-					/**
-					 * Notify to application
-					 */
-					if(attribute_modified->Attr_Data[0] & COMSVC_Notification)
-					{
-//						Notification.Template_Evt_Opcode = TEMPLATE_STM_NOTIFY_ENABLED_EVT;
-//						TEMPLATE_STM_App_Notification(&Notification);
-					}
-					else
-					{
-//						Notification.Template_Evt_Opcode = TEMPLATE_STM_NOTIFY_DISABLED_EVT;
-//						TEMPLATE_STM_App_Notification(&Notification);
-					}
+				/* USER CODE END EVT_BLUE_GATT_ATTRIBUTE_MODIFIED */
+				break;
 
-				}
+				case ACI_GATT_READ_PERMIT_REQ_VSEVT_CODE :
+				/* USER CODE BEGIN EVT_BLUE_GATT_READ_PERMIT_REQ */
+
+				/* USER CODE END EVT_BLUE_GATT_READ_PERMIT_REQ */
+				break;
+
+				case ACI_GATT_WRITE_PERMIT_REQ_VSEVT_CODE:
+				/* USER CODE BEGIN EVT_BLUE_GATT_WRITE_PERMIT_REQ */
+
+				/* USER CODE END EVT_BLUE_GATT_WRITE_PERMIT_REQ */
+				break;
+
+				default:
+				/* USER CODE BEGIN EVT_DEFAULT */
+
+				/* USER CODE END EVT_DEFAULT */
+				break;
 			}
-          /* USER CODE END EVT_BLUE_GATT_ATTRIBUTE_MODIFIED */
-          break;
-        case ACI_GATT_READ_PERMIT_REQ_VSEVT_CODE :
-          /* USER CODE BEGIN EVT_BLUE_GATT_READ_PERMIT_REQ */
+		/* USER CODE BEGIN EVT_VENDOR*/
 
-          /* USER CODE END EVT_BLUE_GATT_READ_PERMIT_REQ */
-          break;
-        case ACI_GATT_WRITE_PERMIT_REQ_VSEVT_CODE:
-          /* USER CODE BEGIN EVT_BLUE_GATT_WRITE_PERMIT_REQ */
+		/* USER CODE END EVT_VENDOR*/
+		break; /* HCI_VENDOR_SPECIFIC_DEBUG_EVT_CODE */
 
-          /* USER CODE END EVT_BLUE_GATT_WRITE_PERMIT_REQ */
-          break;
+		/* USER CODE BEGIN EVENT_PCKT_CASES*/
 
-        default:
-          /* USER CODE BEGIN EVT_DEFAULT */
+		/* USER CODE END EVENT_PCKT_CASES*/
 
-          /* USER CODE END EVT_DEFAULT */
-          break;
-      }
-      /* USER CODE BEGIN EVT_VENDOR*/
+		default:
+		break;
+	}
 
-      /* USER CODE END EVT_VENDOR*/
-      break; /* HCI_VENDOR_SPECIFIC_DEBUG_EVT_CODE */
+	/* USER CODE BEGIN Custom_STM_Event_Handler_2 */
 
-    /* USER CODE BEGIN EVENT_PCKT_CASES*/
+	/* USER CODE END Custom_STM_Event_Handler_2 */
 
-    /* USER CODE END EVENT_PCKT_CASES*/
-
-    default:
-      break;
-  }
-
-/* USER CODE BEGIN Custom_STM_Event_Handler_2 */
-
-/* USER CODE END Custom_STM_Event_Handler_2 */
-
-  return(return_value);
+	return(return_value);
 }/* end Custom_STM_Event_Handler */
 
 /* Public functions ----------------------------------------------------------*/

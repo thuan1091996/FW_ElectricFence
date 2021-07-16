@@ -170,8 +170,8 @@ static SVCCTL_EvtAckStatus_t PeerToPeer_Event_Handler(void *Event)
 				break;
 
 				default:
-					break;
-				}
+				break;
+			}
 		}
 		break; /* HCI_HCI_VENDOR_SPECIFIC_DEBUG_EVT_CODE_SPECIFIC */
 

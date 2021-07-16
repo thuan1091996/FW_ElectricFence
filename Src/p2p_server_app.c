@@ -59,50 +59,50 @@ static void P2PS_Send_Notification(void);
 /* Functions Definition ------------------------------------------------------*/
 void P2PS_STM_App_Notification(P2PS_STM_App_Notification_evt_t *pNotification)
 {
-/* USER CODE BEGIN P2PS_STM_App_Notification_1 */
+	/* USER CODE BEGIN P2PS_STM_App_Notification_1 */
 
-/* USER CODE END P2PS_STM_App_Notification_1 */
-  switch(pNotification->P2P_Evt_Opcode)
-  {
-/* USER CODE BEGIN P2PS_STM_App_Notification_P2P_Evt_Opcode */
+	/* USER CODE END P2PS_STM_App_Notification_1 */
+	switch(pNotification->P2P_Evt_Opcode)
+	{
+	/* USER CODE BEGIN P2PS_STM_App_Notification_P2P_Evt_Opcode */
 
-/* USER CODE END P2PS_STM_App_Notification_P2P_Evt_Opcode */
+	/* USER CODE END P2PS_STM_App_Notification_P2P_Evt_Opcode */
 
-    case P2PS_STM__NOTIFY_ENABLED_EVT:
-/* USER CODE BEGIN P2PS_STM__NOTIFY_ENABLED_EVT */
+	case P2PS_STM__NOTIFY_ENABLED_EVT:
+		/* USER CODE BEGIN P2PS_STM__NOTIFY_ENABLED_EVT */
 
-/* USER CODE END P2PS_STM__NOTIFY_ENABLED_EVT */
-      break;
+		/* USER CODE END P2PS_STM__NOTIFY_ENABLED_EVT */
+		break;
 
-    case P2PS_STM_NOTIFY_DISABLED_EVT:
-/* USER CODE BEGIN P2PS_STM_NOTIFY_DISABLED_EVT */
+	case P2PS_STM_NOTIFY_DISABLED_EVT:
+		/* USER CODE BEGIN P2PS_STM_NOTIFY_DISABLED_EVT */
 
-/* USER CODE END P2PS_STM_NOTIFY_DISABLED_EVT */
-      break;
+		/* USER CODE END P2PS_STM_NOTIFY_DISABLED_EVT */
+		break;
 
-    case P2PS_STM_WRITE_EVT:
-/* USER CODE BEGIN P2PS_STM_WRITE_EVT */
-    	if(pNotification->DataTransfered.pPayload[1] == 0x01)
-    	{
-    		HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_SET);
-    	}
-    	else
-    	{
-    		HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_RESET);
-    	}
-/* USER CODE END P2PS_STM_WRITE_EVT */
-      break;
+	case P2PS_STM_WRITE_EVT:
+		/* USER CODE BEGIN P2PS_STM_WRITE_EVT */
+		if(pNotification->DataTransfered.pPayload[1] == 0x01)
+		{
+			HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_SET);
+		}
+		else
+		{
+			HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_RESET);
+		}
+		/* USER CODE END P2PS_STM_WRITE_EVT */
+		break;
 
-    default:
-/* USER CODE BEGIN P2PS_STM_App_Notification_default */
+	default:
+		/* USER CODE BEGIN P2PS_STM_App_Notification_default */
 
-/* USER CODE END P2PS_STM_App_Notification_default */
-      break;
-  }
-/* USER CODE BEGIN P2PS_STM_App_Notification_2 */
+		/* USER CODE END P2PS_STM_App_Notification_default */
+		break;
+	}
+	/* USER CODE BEGIN P2PS_STM_App_Notification_2 */
 
-/* USER CODE END P2PS_STM_App_Notification_2 */
-  return;
+	/* USER CODE END P2PS_STM_App_Notification_2 */
+	return;
 }
 
 void P2PS_APP_Notification(P2PS_APP_ConnHandle_Not_evt_t *pNotification)

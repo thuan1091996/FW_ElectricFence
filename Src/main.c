@@ -30,6 +30,7 @@
 #include "MMA865x.h"
 #include "L80.h"
 #include "custom_stm.h"
+#include "custom_app.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -86,8 +87,7 @@ typedef struct {
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
 #if DEBUG_CONSOLE
-#if	!DEBUG_UART
-#define DEBUG_ITM						USED
+#if	DEBUG_ITM
 int _write(int file, char *ptr, int len)
 {
 	/* Implement your write code here, this is used by puts and printf for example */
@@ -95,7 +95,7 @@ int _write(int file, char *ptr, int len)
 		ITM_SendChar((*ptr++));
 	return len;
 }
-#else
+#elif DEBUG_UART
 #ifdef __GNUC__
 /* With GCC/RAISONANCE, small printf (option LD Linker->Libraries->Small printf
 		 set to 'Yes') calls __io_putchar() */
@@ -701,7 +701,7 @@ eTestStatus LORA_FWTest(void)
 	printf("Joined successfully \n");
 
 	printf("Sending uplink\n");
-	if( LoRa_SendCMD((uint8_t*)RAK4200_SENDTEST, strlen(RAK4200_SENDTEST), MAX_TIMEOUT_RECV*3) != true)
+	if( LoRa_SendCMD((uint8_t*)RAK4200_SENDTEST, strlen(RAK4200_SENDTEST), MAX_TIMEOUT_RECV*6) != true)
 	{
 		printf("Send up-link failed\n");
 		return RET_FAIL;
@@ -709,6 +709,10 @@ eTestStatus LORA_FWTest(void)
 	printf("Sent up-link successfully\n");
 	#endif  /* End of LORAWAN_TEST */
 
+	#endif	/* End of DEBUG_AT_UART  */
+	#else
+	printf("----- Skipped test ----- \n");
+	#endif /* End of LORA_TEST */
 	#if TEST_SLEEPLORA
 	if( LoRa_SendCMD((uint8_t*)RAK4200_SLEEP, strlen(RAK4200_SLEEP), MAX_TIMEOUT_RECV) != true)
 	{
@@ -717,10 +721,6 @@ eTestStatus LORA_FWTest(void)
 	}
 	printf("RAK4200 was slept\n");
 	#endif /*End of TEST_SLEEPLORA*/
-	#endif	/* End of DEBUG_AT_UART  */
-	#else
-	printf("----- Skipped test ----- \n");
-	#endif /* End of LORA_TEST */
 	return LORA_test;
 }
 
@@ -1130,44 +1130,8 @@ eTestStatus ADC_ElecFenceTest(void)
 	return ADCElecFence_Test;
 }
 
-void HAL_ADC_ErrorCallback(ADC_HandleTypeDef *hadc)
-{
-	__HAL_ADC_CLEAR_FLAG(hadc, ADC_FLAG_OVR);
-}
-
-void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
-{
-	g_flag_dmahalf = true;
-}
-
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
-{
-	if(LL_ADC_IsActiveFlag_EOS(ADC1) != 0)  /* EOS event */
-	{
-		g_ui32ADCraw[2] = HAL_ADC_GetValue(&hadc1);
-		g_newadcdata = true;
-	}
-	else									/* EOC event */
-	{
-		static uint8_t eoc_count=0;
-		if(LL_ADC_IsActiveFlag_EOC(ADC1) != 0)
-		{
-			if(eoc_count == 0)
-			{
-				g_ui32ADCraw[0] = HAL_ADC_GetValue(&hadc1);
-				eoc_count++;
-			}
-			else
-			{
-				g_ui32ADCraw[1] = HAL_ADC_GetValue(&hadc1);
-				eoc_count=0;
-			}
-		}
-	}
-
-}
-
 /**************************************************************************************/
+
 volatile bool g_buttonpressed=false;
 volatile uint16_t g_countbuttonpress=0;
 void ButtonsHandler(void)
@@ -1271,6 +1235,43 @@ void EnterStopMode( void)
 	#endif  /* End of DEV_SLEEP */
 }
 
+void HAL_ADC_ErrorCallback(ADC_HandleTypeDef *hadc)
+{
+	__HAL_ADC_CLEAR_FLAG(hadc, ADC_FLAG_OVR);
+}
+
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
+{
+	g_flag_dmahalf = true;
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+	if(LL_ADC_IsActiveFlag_EOS(ADC1) != 0)  /* EOS event */
+	{
+		g_ui32ADCraw[2] = HAL_ADC_GetValue(&hadc1);
+		g_newadcdata = true;
+	}
+	else									/* EOC event */
+	{
+		static uint8_t eoc_count=0;
+		if(LL_ADC_IsActiveFlag_EOC(ADC1) != 0)
+		{
+			if(eoc_count == 0)
+			{
+				g_ui32ADCraw[0] = HAL_ADC_GetValue(&hadc1);
+				eoc_count++;
+			}
+			else
+			{
+				g_ui32ADCraw[1] = HAL_ADC_GetValue(&hadc1);
+				eoc_count=0;
+			}
+		}
+	}
+
+}
+
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	switch (GPIO_Pin)
@@ -1356,7 +1357,6 @@ int main(void)
 	MX_TIM16_Init();
 	MX_ADC1_Init();
 	/* USER CODE BEGIN 2 */
-
 	#if DEBUG_ITM
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
 	GPIO_InitStruct.Pin = LED_R_Pin;
@@ -1374,8 +1374,10 @@ int main(void)
 		ADC_ElecFenceTest();
 	}
 	#endif  /* End of ENDLESS_HV_MEASURING */
-	Sys_Test();
 
+	#if HW_SYSTEST
+	Sys_Test();
+	#endif  /* End of HW_SYSTEST */
 	/************** Electrical fence testing ***************/
 	printf("Electrical fence testing... \n");
 	for (int count = 0; count < 10; ++count)
@@ -1408,14 +1410,17 @@ int main(void)
 		#if BLE_TEST
 		UTIL_SEQ_Run(~0);
 		#endif  /* End of BLE_TEST */
+
+		#if PLOT_HV_ADC
 		HV_FWTest();
+		#endif  /* End of PLOT_HV_ADC */
 
 		#if ADC_ELECFENCE_TEST
-		GPIOB->ODR ^= LED_G_Pin;
 		ADC_ElecFenceTest();
-		GPIOB->ODR ^= LED_G_Pin;
 		printf("HV %d (mV)\n", g_max_hv);
 		#endif  /* End of ADC_ELECFENCE_TEST */
+
+		BLE_TestNotify();
 	}
 	/* USER CODE END 3 */
 }

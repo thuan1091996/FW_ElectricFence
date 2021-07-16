@@ -521,230 +521,233 @@ void APP_BLE_Init( void )
 
 SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 {
-  hci_event_pckt *event_pckt;
-  evt_le_meta_event *meta_evt;
-  evt_blecore_aci *blecore_evt;
-  hci_le_phy_update_complete_event_rp0 *evt_le_phy_update_complete;
-  uint8_t TX_PHY, RX_PHY;
-  tBleStatus ret = BLE_STATUS_INVALID_PARAMS;
+	hci_event_pckt *event_pckt;
+	evt_le_meta_event *meta_evt;
+	evt_blecore_aci *blecore_evt;
+	hci_le_phy_update_complete_event_rp0 *evt_le_phy_update_complete;
+	uint8_t TX_PHY, RX_PHY;
+	tBleStatus ret = BLE_STATUS_INVALID_PARAMS;
 
-  event_pckt = (hci_event_pckt*) ((hci_uart_pckt *) pckt)->data;
+	event_pckt = (hci_event_pckt*) ((hci_uart_pckt *) pckt)->data;
 
-  /* PAIRING */
-  aci_gap_numeric_comparison_value_event_rp0 *evt_numeric_value;
-  aci_gap_pairing_complete_event_rp0 *pairing_complete;
-  uint32_t numeric_value;
-  /* PAIRING */
+	/* PAIRING */
+	aci_gap_numeric_comparison_value_event_rp0 *evt_numeric_value;
+	aci_gap_pairing_complete_event_rp0 *pairing_complete;
+	uint32_t numeric_value;
+	/* PAIRING */
 
-  /* USER CODE BEGIN SVCCTL_App_Notification */
+	/* USER CODE BEGIN SVCCTL_App_Notification */
 
-  /* USER CODE END SVCCTL_App_Notification */
+	/* USER CODE END SVCCTL_App_Notification */
 
-  switch (event_pckt->evt)
-  {
-    case HCI_DISCONNECTION_COMPLETE_EVT_CODE:
-    {
-      hci_disconnection_complete_event_rp0 *disconnection_complete_event;
-      disconnection_complete_event = (hci_disconnection_complete_event_rp0 *) event_pckt->data;
+	switch (event_pckt->evt)
+	{
+		case HCI_DISCONNECTION_COMPLETE_EVT_CODE:
+		{
+			hci_disconnection_complete_event_rp0 *disconnection_complete_event;
+			disconnection_complete_event = (hci_disconnection_complete_event_rp0 *) event_pckt->data;
 
-      if (disconnection_complete_event->Connection_Handle == BleApplicationContext.BleApplicationContext_legacy.connectionHandle)
-      {
-        BleApplicationContext.BleApplicationContext_legacy.connectionHandle = 0;
-        BleApplicationContext.Device_Connection_Status = APP_BLE_IDLE;
-      }
+			if (disconnection_complete_event->Connection_Handle == BleApplicationContext.BleApplicationContext_legacy.connectionHandle)
+			{
+				BleApplicationContext.BleApplicationContext_legacy.connectionHandle = 0;
+				BleApplicationContext.Device_Connection_Status = APP_BLE_IDLE;
+			}
 
-      /* restart advertising */
-      Adv_Request(APP_BLE_FAST_ADV);
+			/* restart advertising */
+			Adv_Request(APP_BLE_FAST_ADV);
 
-      /**
-       * SPECIFIC to Custom Template APP
-       */
-      handleNotification.Custom_Evt_Opcode = CUSTOM_DISCON_HANDLE_EVT;
-      handleNotification.ConnectionHandle = BleApplicationContext.BleApplicationContext_legacy.connectionHandle;
-      Custom_APP_Notification(&handleNotification);
-      /* USER CODE BEGIN EVT_DISCONN_COMPLETE */
-      APP_DBG_MSG("\r\n\r** DISCONNECTION EVENT WITH CLIENT \n");
-      /* USER CODE END EVT_DISCONN_COMPLETE */
-    }
+			/**
+			 * SPECIFIC to Custom Template APP
+			 */
+			handleNotification.Custom_Evt_Opcode = CUSTOM_DISCON_HANDLE_EVT;
+			handleNotification.ConnectionHandle = BleApplicationContext.BleApplicationContext_legacy.connectionHandle;
+			Custom_APP_Notification(&handleNotification);
+			/* USER CODE BEGIN EVT_DISCONN_COMPLETE */
+			APP_DBG_MSG("\r\n\r** DISCONNECTION EVENT WITH CLIENT \n");
+			/* USER CODE END EVT_DISCONN_COMPLETE */
+		}
+		break; /* HCI_DISCONNECTION_COMPLETE_EVT_CODE */
 
-    break; /* HCI_DISCONNECTION_COMPLETE_EVT_CODE */
+		case HCI_LE_META_EVT_CODE:
+		{
+			meta_evt = (evt_le_meta_event*) event_pckt->data;
+			/* USER CODE BEGIN EVT_LE_META_EVENT */
 
-    case HCI_LE_META_EVT_CODE:
-    {
-      meta_evt = (evt_le_meta_event*) event_pckt->data;
-      /* USER CODE BEGIN EVT_LE_META_EVENT */
+			/* USER CODE END EVT_LE_META_EVENT */
+			switch (meta_evt->subevent)
+			{
+				case HCI_LE_CONNECTION_UPDATE_COMPLETE_SUBEVT_CODE:
+					APP_DBG_MSG("\r\n\r** CONNECTION UPDATE EVENT WITH CLIENT \n");
 
-      /* USER CODE END EVT_LE_META_EVENT */
-      switch (meta_evt->subevent)
-      {
-        case HCI_LE_CONNECTION_UPDATE_COMPLETE_SUBEVT_CODE:
-          APP_DBG_MSG("\r\n\r** CONNECTION UPDATE EVENT WITH CLIENT \n");
+					/* USER CODE BEGIN EVT_LE_CONN_UPDATE_COMPLETE */
 
-          /* USER CODE BEGIN EVT_LE_CONN_UPDATE_COMPLETE */
+					/* USER CODE END EVT_LE_CONN_UPDATE_COMPLETE */
+				break;
 
-          /* USER CODE END EVT_LE_CONN_UPDATE_COMPLETE */
-          break;
-        case HCI_LE_PHY_UPDATE_COMPLETE_SUBEVT_CODE:
-          APP_DBG_MSG("EVT_UPDATE_PHY_COMPLETE \n");
-          evt_le_phy_update_complete = (hci_le_phy_update_complete_event_rp0*)meta_evt->data;
-          if (evt_le_phy_update_complete->Status == 0)
-          {
-            APP_DBG_MSG("EVT_UPDATE_PHY_COMPLETE, status ok \n");
-          }
-          else
-          {
-            APP_DBG_MSG("EVT_UPDATE_PHY_COMPLETE, status nok \n");
-          }
+				case HCI_LE_PHY_UPDATE_COMPLETE_SUBEVT_CODE:
+					APP_DBG_MSG("EVT_UPDATE_PHY_COMPLETE \n");
+					evt_le_phy_update_complete = (hci_le_phy_update_complete_event_rp0*)meta_evt->data;
+					if (evt_le_phy_update_complete->Status == 0)
+					{
+						APP_DBG_MSG("EVT_UPDATE_PHY_COMPLETE, status ok \n");
+					}
+					else
+					{
+						APP_DBG_MSG("EVT_UPDATE_PHY_COMPLETE, status nok \n");
+					}
 
-          ret = hci_le_read_phy(BleApplicationContext.BleApplicationContext_legacy.connectionHandle,&TX_PHY,&RX_PHY);
-          if (ret == BLE_STATUS_SUCCESS)
-          {
-            APP_DBG_MSG("Read_PHY success \n");
+					ret = hci_le_read_phy(BleApplicationContext.BleApplicationContext_legacy.connectionHandle,&TX_PHY,&RX_PHY);
+					if (ret == BLE_STATUS_SUCCESS)
+					{
+						APP_DBG_MSG("Read_PHY success \n");
 
-            if ((TX_PHY == TX_2M) && (RX_PHY == RX_2M))
-            {
-              APP_DBG_MSG("PHY Param  TX= %d, RX= %d \n", TX_PHY, RX_PHY);
-            }
-            else
-            {
-              APP_DBG_MSG("PHY Param  TX= %d, RX= %d \n", TX_PHY, RX_PHY);
-            }
-          }
-          else
-          {
-            APP_DBG_MSG("Read conf not succeess \n");
-          }
-          /* USER CODE BEGIN EVT_LE_PHY_UPDATE_COMPLETE */
+						if ((TX_PHY == TX_2M) && (RX_PHY == RX_2M))
+						{
+							APP_DBG_MSG("PHY Param  TX= %d, RX= %d \n", TX_PHY, RX_PHY);
+						}
+						else
+						{
+							APP_DBG_MSG("PHY Param  TX= %d, RX= %d \n", TX_PHY, RX_PHY);
+						}
+					}
+					else
+					{
+						APP_DBG_MSG("Read conf not succeess \n");
+					}
+					/* USER CODE BEGIN EVT_LE_PHY_UPDATE_COMPLETE */
 
-          /* USER CODE END EVT_LE_PHY_UPDATE_COMPLETE */
-          break;
-        case HCI_LE_CONNECTION_COMPLETE_SUBEVT_CODE:
-        {
-          hci_le_connection_complete_event_rp0 *connection_complete_event;
+					/* USER CODE END EVT_LE_PHY_UPDATE_COMPLETE */
+				break;
 
-          /**
-           * The connection is done, there is no need anymore to schedule the LP ADV
-           */
-          connection_complete_event = (hci_le_connection_complete_event_rp0 *) meta_evt->data;
+				case HCI_LE_CONNECTION_COMPLETE_SUBEVT_CODE:
+				{
+					hci_le_connection_complete_event_rp0 *connection_complete_event;
 
-          HW_TS_Stop(BleApplicationContext.Advertising_mgr_timer_Id);
+					/**
+					 * The connection is done, there is no need anymore to schedule the LP ADV
+					 */
+					connection_complete_event = (hci_le_connection_complete_event_rp0 *) meta_evt->data;
 
-          APP_DBG_MSG("HCI_LE_CONNECTION_COMPLETE_SUBEVT_CODE for connection handle 0x%x\n", connection_complete_event->Connection_Handle);
-          if (BleApplicationContext.Device_Connection_Status == APP_BLE_LP_CONNECTING)
-          {
-            /* Connection as client */
-            BleApplicationContext.Device_Connection_Status = APP_BLE_CONNECTED_CLIENT;
-          }
-          else
-          {
-            /* Connection as server */
-            BleApplicationContext.Device_Connection_Status = APP_BLE_CONNECTED_SERVER;
-          }
-          BleApplicationContext.BleApplicationContext_legacy.connectionHandle = connection_complete_event->Connection_Handle;
-          /**
-           * SPECIFIC to Custom Template APP
-           */
-          handleNotification.Custom_Evt_Opcode = CUSTOM_CONN_HANDLE_EVT;
-          handleNotification.ConnectionHandle = BleApplicationContext.BleApplicationContext_legacy.connectionHandle;
-          Custom_APP_Notification(&handleNotification);
-          /* USER CODE BEGIN HCI_EVT_LE_CONN_COMPLETE */
-          /* USER CODE END HCI_EVT_LE_CONN_COMPLETE */
-        }
-        break; /* HCI_LE_CONNECTION_COMPLETE_SUBEVT_CODE */
+					HW_TS_Stop(BleApplicationContext.Advertising_mgr_timer_Id);
 
-        /* USER CODE BEGIN META_EVT */
+					APP_DBG_MSG("HCI_LE_CONNECTION_COMPLETE_SUBEVT_CODE for connection handle 0x%x\n", connection_complete_event->Connection_Handle);
+					if (BleApplicationContext.Device_Connection_Status == APP_BLE_LP_CONNECTING)
+					{
+						/* Connection as client */
+						BleApplicationContext.Device_Connection_Status = APP_BLE_CONNECTED_CLIENT;
+					}
+					else
+					{
+						/* Connection as server */
+						BleApplicationContext.Device_Connection_Status = APP_BLE_CONNECTED_SERVER;
+					}
+					BleApplicationContext.BleApplicationContext_legacy.connectionHandle = connection_complete_event->Connection_Handle;
+					/**
+					 * SPECIFIC to Custom Template APP
+					 */
+					handleNotification.Custom_Evt_Opcode = CUSTOM_CONN_HANDLE_EVT;
+					handleNotification.ConnectionHandle = BleApplicationContext.BleApplicationContext_legacy.connectionHandle;
+					Custom_APP_Notification(&handleNotification);
+					/* USER CODE BEGIN HCI_EVT_LE_CONN_COMPLETE */
+					/* USER CODE END HCI_EVT_LE_CONN_COMPLETE */
+				}
+				break; /* HCI_LE_CONNECTION_COMPLETE_SUBEVT_CODE */
 
-        /* USER CODE END META_EVT */
+				/* USER CODE BEGIN META_EVT */
 
-        default:
-          /* USER CODE BEGIN SUBEVENT_DEFAULT */
+				/* USER CODE END META_EVT */
 
-          /* USER CODE END SUBEVENT_DEFAULT */
-          break;
-      }
-    }
-    break; /* HCI_LE_META_EVT_CODE */
+				default:
+					/* USER CODE BEGIN SUBEVENT_DEFAULT */
 
-    case HCI_VENDOR_SPECIFIC_DEBUG_EVT_CODE:
-      blecore_evt = (evt_blecore_aci*) event_pckt->data;
-      /* USER CODE BEGIN EVT_VENDOR */
+					/* USER CODE END SUBEVENT_DEFAULT */
+				break;
+				}
+		}
+		break; /* HCI_LE_META_EVT_CODE */
 
-      /* USER CODE END EVT_VENDOR */
-      switch (blecore_evt->ecode)
-      {
-      /* USER CODE BEGIN ecode */
+		case HCI_VENDOR_SPECIFIC_DEBUG_EVT_CODE:
+			blecore_evt = (evt_blecore_aci*) event_pckt->data;
+			/* USER CODE BEGIN EVT_VENDOR */
 
-      /* USER CODE END ecode */
-      /**
-       * SPECIFIC to P2P Server APP
-       */
-      /**
-       * SPECIFIC to Custom Template APP
-       */
-        case ACI_L2CAP_CONNECTION_UPDATE_RESP_VSEVT_CODE:
-#if (L2CAP_REQUEST_NEW_CONN_PARAM != 0 )
-          mutex = 1;
-#endif
-      /* USER CODE BEGIN EVT_BLUE_L2CAP_CONNECTION_UPDATE_RESP */
+			/* USER CODE END EVT_VENDOR */
+			switch (blecore_evt->ecode)
+			{
+				/* USER CODE BEGIN ecode */
 
-      /* USER CODE END EVT_BLUE_L2CAP_CONNECTION_UPDATE_RESP */
-      break;
-        case ACI_GAP_PROC_COMPLETE_VSEVT_CODE:
-        APP_DBG_MSG("\r\n\r** ACI_GAP_PROC_COMPLETE_VSEVT_CODE \n");
-        /* USER CODE BEGIN EVT_BLUE_GAP_PROCEDURE_COMPLETE */
+				/* USER CODE END ecode */
+				/**
+				 * SPECIFIC to P2P Server APP
+				 */
+				/**
+				 * SPECIFIC to Custom Template APP
+				 */
+				case ACI_L2CAP_CONNECTION_UPDATE_RESP_VSEVT_CODE:
+					#if (L2CAP_REQUEST_NEW_CONN_PARAM != 0 )
+					mutex = 1;
+					#endif
+					/* USER CODE BEGIN EVT_BLUE_L2CAP_CONNECTION_UPDATE_RESP */
 
-        /* USER CODE END EVT_BLUE_GAP_PROCEDURE_COMPLETE */
-          break; /* ACI_GAP_PROC_COMPLETE_VSEVT_CODE */
-#if(RADIO_ACTIVITY_EVENT != 0)
-        case ACI_HAL_END_OF_RADIO_ACTIVITY_VSEVT_CODE:
-        /* USER CODE BEGIN RADIO_ACTIVITY_EVENT*/
-		HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
-		HAL_Delay(10);
+					/* USER CODE END EVT_BLUE_L2CAP_CONNECTION_UPDATE_RESP */
+				break;
 
-        /* USER CODE END RADIO_ACTIVITY_EVENT*/
-          break; /* ACI_HAL_END_OF_RADIO_ACTIVITY_VSEVT_CODE */
-#endif
+				case ACI_GAP_PROC_COMPLETE_VSEVT_CODE:
+					APP_DBG_MSG("\r\n\r** ACI_GAP_PROC_COMPLETE_VSEVT_CODE \n");
+					/* USER CODE BEGIN EVT_BLUE_GAP_PROCEDURE_COMPLETE */
 
-        /* PAIRING */
-        case (ACI_GAP_KEYPRESS_NOTIFICATION_VSEVT_CODE):
-         APP_DBG_MSG("\r\n\r** ACI_GAP_KEYPRESS_NOTIFICATION_VSEVT_CODE \n");
-        break;
+					/* USER CODE END EVT_BLUE_GAP_PROCEDURE_COMPLETE */
+				break; /* ACI_GAP_PROC_COMPLETE_VSEVT_CODE */
 
-        case ACI_GAP_PASS_KEY_REQ_VSEVT_CODE:
-            aci_gap_pass_key_resp(BleApplicationContext.BleApplicationContext_legacy.connectionHandle, CFG_FIXED_PIN);
-        break;
+				#if(RADIO_ACTIVITY_EVENT != 0)
+				case ACI_HAL_END_OF_RADIO_ACTIVITY_VSEVT_CODE:
+					/* USER CODE BEGIN RADIO_ACTIVITY_EVENT*/
+					HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
+					HAL_Delay(10);
 
-        case ACI_GAP_NUMERIC_COMPARISON_VALUE_VSEVT_CODE:
-            evt_numeric_value = (aci_gap_numeric_comparison_value_event_rp0 *)blecore_evt->data;
-            numeric_value = evt_numeric_value->Numeric_Value;
-            APP_DBG_MSG("numeric_value = %lx\n", numeric_value);
-            aci_gap_numeric_comparison_value_confirm_yesno(BleApplicationContext.BleApplicationContext_legacy.connectionHandle, YES);
-        break;
+					/* USER CODE END RADIO_ACTIVITY_EVENT*/
+				break; /* ACI_HAL_END_OF_RADIO_ACTIVITY_VSEVT_CODE */
+				#endif
 
-        case ACI_GAP_PAIRING_COMPLETE_VSEVT_CODE:
-            pairing_complete = (aci_gap_pairing_complete_event_rp0*)blecore_evt->data;
-            APP_DBG_MSG("BLE_CTRL_App_Notification: ACI_GAP_PAIRING_COMPLETE_VSEVT_CODE, pairing_complete->Status = %d\n",pairing_complete->Status);
-        break;
-        /* PAIRING */
+				/* PAIRING */
+				case (ACI_GAP_KEYPRESS_NOTIFICATION_VSEVT_CODE):
+						APP_DBG_MSG("\r\n\r** ACI_GAP_KEYPRESS_NOTIFICATION_VSEVT_CODE \n");
+				break;
 
-      /* USER CODE BEGIN BLUE_EVT */
+				case ACI_GAP_PASS_KEY_REQ_VSEVT_CODE:
+						aci_gap_pass_key_resp(BleApplicationContext.BleApplicationContext_legacy.connectionHandle, CFG_FIXED_PIN);
+				break;
 
-      /* USER CODE END BLUE_EVT */
-      }
-      break; /* HCI_VENDOR_SPECIFIC_DEBUG_EVT_CODE */
+				case ACI_GAP_NUMERIC_COMPARISON_VALUE_VSEVT_CODE:
+					evt_numeric_value = (aci_gap_numeric_comparison_value_event_rp0 *)blecore_evt->data;
+					numeric_value = evt_numeric_value->Numeric_Value;
+					APP_DBG_MSG("numeric_value = %lx\n", numeric_value);
+					aci_gap_numeric_comparison_value_confirm_yesno(BleApplicationContext.BleApplicationContext_legacy.connectionHandle, YES);
+				break;
 
-      /* USER CODE BEGIN EVENT_PCKT */
+				case ACI_GAP_PAIRING_COMPLETE_VSEVT_CODE:
+					pairing_complete = (aci_gap_pairing_complete_event_rp0*)blecore_evt->data;
+					APP_DBG_MSG("BLE_CTRL_App_Notification: ACI_GAP_PAIRING_COMPLETE_VSEVT_CODE, pairing_complete->Status = %d\n",pairing_complete->Status);
+				break;
+				/* PAIRING */
 
-      /* USER CODE END EVENT_PCKT */
+				/* USER CODE BEGIN BLUE_EVT */
 
-      default:
-      /* USER CODE BEGIN ECODE_DEFAULT*/
+				/* USER CODE END BLUE_EVT */
+			}
+		break; /* HCI_VENDOR_SPECIFIC_DEBUG_EVT_CODE */
 
-      /* USER CODE END ECODE_DEFAULT*/
-      break;
-  }
+		/* USER CODE BEGIN EVENT_PCKT */
 
-  return (SVCCTL_UserEvtFlowEnable);
+		/* USER CODE END EVENT_PCKT */
+
+		default:
+			/* USER CODE BEGIN ECODE_DEFAULT*/
+
+			/* USER CODE END ECODE_DEFAULT*/
+		break;
+	}
+
+	return (SVCCTL_UserEvtFlowEnable);
 }
 
 APP_BLE_ConnStatus_t APP_BLE_Get_Server_Connection_Status(void)

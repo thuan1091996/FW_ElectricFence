@@ -290,7 +290,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_UserEvtRx( void *pckt )
 		break;
 	}
 	/**************************************************************************************************************************************/
-
+	/**************************************** Handle GAP Events (and GATT that have no acknowledged ???) ***********************************/
 	/**
 	 * When no registered handlers (either Service or Client) has acknowledged the GATT event, it is reported to the application
 	 * a GAP event is always reported to the applicaiton.
