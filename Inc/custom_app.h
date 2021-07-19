@@ -46,7 +46,11 @@ typedef struct
   uint16_t                                 ConnectionHandle;
 } Custom_App_ConnHandle_Not_evt_t;
 /* USER CODE BEGIN ET */
-
+typedef struct ELFence_Batt_Data
+{
+	volatile uint16_t Batt_volt_U16; /* mV */
+	bool Is_NotifyEn_B;
+}ELFence_Batt_Data_t;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -67,6 +71,8 @@ typedef struct
 /* Exported functions ---------------------------------------------*/
   void Custom_APP_Init( void );
   void Custom_APP_Notification( Custom_App_ConnHandle_Not_evt_t *pNotification );
+  void Custom_Vbat_Send_Notification(void);	/* VBat notification */
+
 /* USER CODE BEGIN EF */
 
 /* USER CODE END EF */

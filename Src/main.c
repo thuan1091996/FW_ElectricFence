@@ -1131,7 +1131,21 @@ eTestStatus ADC_ElecFenceTest(void)
 }
 
 /**************************************************************************************/
+/********************************---BLE TEST---****************************************/
+extern ELFence_Batt_Data_t Batt_Data;
+volatile uint16_t g_test_vbat=0;
+void BLE_TestNotify(void)
+{
+	static uint16_t prev_vbat=0;
+	if( g_test_vbat != prev_vbat)
+	{
+		Batt_Data.Batt_volt_U16 = g_test_vbat;
+		Custom_Vbat_Send_Notification();
+		prev_vbat = g_test_vbat;
+	}
+}
 
+/**************************************************************************************/
 volatile bool g_buttonpressed=false;
 volatile uint16_t g_countbuttonpress=0;
 void ButtonsHandler(void)

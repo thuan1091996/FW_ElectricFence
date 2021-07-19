@@ -257,19 +257,19 @@ void Custom_Vbat_Update_Char(void) /* Property Read */
 }
 
 void Custom_Vbat_Send_Notification(void) /* Property Notification */
- {
-  if(Custom_App_Context.Vbat_Notification_Status)
-  {
-    Custom_STM_App_Update_Char(CUSTOM_STM_VBAT, (uint8_t *)NotifyCharData);
-    /* USER CODE BEGIN Vbat_NS*/
-
-    /* USER CODE END Vbat_NS*/
-  }
-  else
-  {
-    APP_DBG_MSG("-- CUSTOM APPLICATION : CAN'T INFORM CLIENT -  NOTIFICATION DISABLED\n ");
-  }
-  return;
+{
+	if (Batt_Data.Is_NotifyEn_B == true)
+	{
+		Custom_STM_App_Update_Char(CUSTOM_STM_VBAT, (uint8_t *)&(Batt_Data.Batt_volt_U16));
+		/* USER CODE BEGIN Vbat_NS*/
+		APP_DBG_MSG("-- CUSTOM APPLICATION : VBAT DATA = %d\n ", Batt_Data.Batt_volt_U16);
+		/* USER CODE END Vbat_NS*/
+	}
+	else
+	{
+		APP_DBG_MSG("-- CUSTOM APPLICATION : CAN'T INFORM CLIENT -  NOTIFICATION DISABLED\n ");
+	}
+	return;
 }
 
 /* USER CODE BEGIN FD_LOCAL_FUNCTIONS*/
