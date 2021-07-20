@@ -742,7 +742,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification( void *pckt )
 
 		default:
 			/* USER CODE BEGIN ECODE_DEFAULT*/
-
+			APP_DBG_MSG("\r\n** UNKNOWN EVENT !!!\n");
 			/* USER CODE END ECODE_DEFAULT*/
 		break;
 	}

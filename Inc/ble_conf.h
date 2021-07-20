@@ -66,7 +66,7 @@
 /******************************************************************************
  * Over The Air Feature (OTA) - STM Proprietary
  ******************************************************************************/
-#define BLE_CFG_OTA_REBOOT_CHAR         0/**< REBOOT OTA MODE CHARACTERISTIC */
+#define BLE_CFG_OTA_REBOOT_CHAR         1/**< REBOOT OTA MODE CHARACTERISTIC */
 
 #endif /*BLE_CONF_H */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

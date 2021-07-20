@@ -194,9 +194,13 @@ void SystemInit(void)
   /* Configure the Vector Table location add offset address ------------------*/
 #if defined(VECT_TAB_SRAM) && defined(VECT_TAB_BASE_ADDRESS)  
   /* program in SRAMx */
-  SCB->VTOR = VECT_TAB_BASE_ADDRESS | VECT_TAB_OFFSET;  /* Vector Table Relocation in Internal SRAMx for CPU1 */
-#else    /* program in FLASH */
-  SCB->VTOR = VECT_TAB_OFFSET;              /* Vector Table Relocation in Internal FLASH */
+	SCB->VTOR = VECT_TAB_BASE_ADDRESS | VECT_TAB_OFFSET;  /* Vector Table Relocation in Internal SRAMx for CPU1 */
+	#else    /* program in FLASH */
+
+	/* OTA program will set the correct vector table address so when use OTA feature Vector Table Relocation should not be touch*/
+	#if BLE_CFG_OTA_REBOOT_CHAR
+	SCB->VTOR = VECT_TAB_OFFSET;              /* Vector Table Relocation in Internal FLASH */
+	#endif  /* End of BLE_CFG_OTA_REBOOT_CHAR */
 #endif
 
   /* FPU settings ------------------------------------------------------------*/
