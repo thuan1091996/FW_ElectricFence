@@ -64,39 +64,45 @@ void P2PS_STM_App_Notification(P2PS_STM_App_Notification_evt_t *pNotification)
 	/* USER CODE END P2PS_STM_App_Notification_1 */
 	switch(pNotification->P2P_Evt_Opcode)
 	{
-	/* USER CODE BEGIN P2PS_STM_App_Notification_P2P_Evt_Opcode */
+		/* USER CODE BEGIN P2PS_STM_App_Notification_P2P_Evt_Opcode */
 
-	/* USER CODE END P2PS_STM_App_Notification_P2P_Evt_Opcode */
+		/* USER CODE END P2PS_STM_App_Notification_P2P_Evt_Opcode */
 
-	case P2PS_STM__NOTIFY_ENABLED_EVT:
-		/* USER CODE BEGIN P2PS_STM__NOTIFY_ENABLED_EVT */
+		case P2PS_STM__NOTIFY_ENABLED_EVT:
+			/* USER CODE BEGIN P2PS_STM__NOTIFY_ENABLED_EVT */
 
-		/* USER CODE END P2PS_STM__NOTIFY_ENABLED_EVT */
+			/* USER CODE END P2PS_STM__NOTIFY_ENABLED_EVT */
 		break;
 
-	case P2PS_STM_NOTIFY_DISABLED_EVT:
-		/* USER CODE BEGIN P2PS_STM_NOTIFY_DISABLED_EVT */
+		case P2PS_STM_NOTIFY_DISABLED_EVT:
+			/* USER CODE BEGIN P2PS_STM_NOTIFY_DISABLED_EVT */
 
-		/* USER CODE END P2PS_STM_NOTIFY_DISABLED_EVT */
+			/* USER CODE END P2PS_STM_NOTIFY_DISABLED_EVT */
 		break;
 
-	case P2PS_STM_WRITE_EVT:
-		/* USER CODE BEGIN P2PS_STM_WRITE_EVT */
-		if(pNotification->DataTransfered.pPayload[1] == 0x01)
-		{
-			HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_SET);
-		}
-		else
-		{
-			HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_RESET);
-		}
-		/* USER CODE END P2PS_STM_WRITE_EVT */
+		case P2PS_STM_WRITE_EVT:
+			/* USER CODE BEGIN P2PS_STM_WRITE_EVT */
+			if(pNotification->DataTransfered.pPayload[1] == 0x01)
+			{
+				HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_SET);
+			}
+			else
+			{
+				HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_RESET);
+			}
+			/* USER CODE END P2PS_STM_WRITE_EVT */
 		break;
 
-	default:
-		/* USER CODE BEGIN P2PS_STM_App_Notification_default */
+		case P2PS_STM_BOOT_REQUEST_EVT:
+			APP_DBG_MSG("-- P2P APPLICATION SERVER : BOOT REQUESTED\n");
+			APP_DBG_MSG(" \n\r");
+			*(uint32_t*)SRAM1_BASE = *(uint32_t*)pNotification->DataTransfered.pPayload;
+			NVIC_SystemReset();
+			break;
+		default:
+			/* USER CODE BEGIN P2PS_STM_App_Notification_default */
 
-		/* USER CODE END P2PS_STM_App_Notification_default */
+			/* USER CODE END P2PS_STM_App_Notification_default */
 		break;
 	}
 	/* USER CODE BEGIN P2PS_STM_App_Notification_2 */
