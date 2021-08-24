@@ -84,11 +84,11 @@ void P2PS_STM_App_Notification(P2PS_STM_App_Notification_evt_t *pNotification)
 			/* USER CODE BEGIN P2PS_STM_WRITE_EVT */
 			if(pNotification->DataTransfered.pPayload[1] == 0x01)
 			{
-				HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_SET);
+				//TODO: LED ON
 			}
 			else
 			{
-				HAL_GPIO_WritePin(LED_TEST_GPIO_Port, LED_TEST_Pin, GPIO_PIN_RESET);
+				//TODO: LED OFF
 			}
 			/* USER CODE END P2PS_STM_WRITE_EVT */
 		break;

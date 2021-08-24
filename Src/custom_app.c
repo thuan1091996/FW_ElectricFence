@@ -170,7 +170,6 @@ void Custom_APP_Notification(Custom_App_ConnHandle_Not_evt_t *pNotification)
 	/* USER CODE END P2PS_CUSTOM_Notification_Custom_Evt_Opcode */
 	case CUSTOM_CONN_HANDLE_EVT :
 		/* USER CODE BEGIN CUSTOM_CONN_HANDLE_EVT */
-		HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_SET);
 		APP_DBG_MSG("\r\n\r** COMPLETE CONNECTED EVENT WITH CLIENT \n");
 		/* USER CODE END CUSTOM_CONN_HANDLE_EVT */
 		break;
@@ -178,12 +177,6 @@ void Custom_APP_Notification(Custom_App_ConnHandle_Not_evt_t *pNotification)
 	case CUSTOM_DISCON_HANDLE_EVT :
 		/* USER CODE BEGIN CUSTOM_DISCON_HANDLE_EVT */
 		APP_DBG_MSG("\r\n\r** DISCONNECTION EVENT WITH CLIENT \n");
-		for (uint8_t count = 0; count < 10; ++count)	/* Blink then shut down Buzzer */
-		{
-			HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
-			HAL_Delay(100);
-		}
-		HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
 		/* USER CODE END CUSTOM_DISCON_HANDLE_EVT */
 		break;
 

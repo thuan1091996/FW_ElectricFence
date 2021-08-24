@@ -217,21 +217,6 @@ void DbgTraceInit( void )
 
 #if (( CFG_DEBUG_TRACE_FULL != 0 ) || ( CFG_DEBUG_TRACE_LIGHT != 0 ))
 #if defined(__GNUC__)  /* SW4STM32 (GCC) */
-/**
- * @brief	_write: override the __write standard lib function to redirect printf to USART.
- * @param	handle output handle (STDIO, STDERR...)
- * @param	buf buffer to write
- * @param	bufsize buffer size
- * @param	...: arguments to be formatted in format string
- * @retval none
- */
-#if DEBUG_CONSOLE
-#else
-__weak size_t _write(int handle, const unsigned char * buf, size_t bufSize)
-{
-  return ( DbgTraceWrite(handle, buf, bufSize) );
-}
-#endif  /* End of DEBUG_CONSOLE */
 
 #else
 /**

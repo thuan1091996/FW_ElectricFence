@@ -884,7 +884,7 @@ void ADC_PowerInit()
 	}
 	/** Configure Regular Channel
 	 */
-	sConfig.Channel = ADC_CHANNEL_11;
+	sConfig.Channel = BATT_ADC_CHANNEL;
 	sConfig.Rank = ADC_REGULAR_RANK_2;
 	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
 	{
@@ -892,7 +892,7 @@ void ADC_PowerInit()
 	}
 	/** Configure Regular Channel
 	 */
-	sConfig.Channel = ADC_CHANNEL_12;
+	sConfig.Channel = V12V_ADC_CHANNEL;
 	sConfig.Rank = ADC_REGULAR_RANK_3;
 	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
 	{
@@ -1010,7 +1010,7 @@ uint32_t g_adc_pos=0;
 uint32_t g_adc_neg=0;
 eTestStatus HV_FWTest(void)
 {
-	HAL_GPIO_WritePin(OPA_SW_GPIO_Port, OPA_SW_Pin, GPIO_PIN_SET);
+	OPA_SW_SET(TRUE);
 	ADC_HVInit();
 	HAL_Delay(100);
 	while(1)
@@ -1036,7 +1036,7 @@ eTestStatus ADC_FWTest(void)
 	ADC_PowerInit();
 	ADC_test = RET_FAIL;
 	#ifdef ADC_TEST
-	HAL_GPIO_WritePin(EN_BATT_GPIO_Port, EN_BATT_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(VREF_EN_GPIO_Port, VREF_EN_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(RELAY_EN_GPIO_Port, RELAY_EN_Pin, GPIO_PIN_SET);
 	HAL_Delay(500);			/* Wait for stable */
 	while(1)
@@ -1187,12 +1187,6 @@ void EnterStopMode( void)
 	#if DEV_SLEEP
 	printf("Entering stop 2 mode...\n");
 
-	HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
-	HAL_Delay(500);
-	HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
-	HAL_Delay(500);
-	HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
-
 	LL_C2_PWR_SetPowerMode(LL_PWR_MODE_SHUTDOWN);
 	__HAL_RCC_LPUART1_CLK_DISABLE();
 	#if DEBUG_LPOWER
@@ -1205,39 +1199,15 @@ void EnterStopMode( void)
 	LL_DBGMCU_DisableDBGStandbyMode();
 	#endif  /* End of DEBUG_LPOWER */
 
-
-
 	// Module control pins -> low output
-	HAL_GPIO_WritePin(EN_BATT_GPIO_Port, EN_BATT_Pin, GPIO_PIN_RESET);   	/* Turn off Batt */
-	HAL_GPIO_WritePin(EEPROM_EN_GPIO_Port, EEPROM_EN_Pin, GPIO_PIN_RESET); 	/* Turn off EEPROM */
-//	HAL_GPIO_WritePin(RAK_EN_GPIO_Port, RAK_EN_Pin, GPIO_PIN_RESET);		/* Turn off RAk4200 */
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7 | GPIO_PIN_8, GPIO_PIN_RESET);		/* Turn off RAk4200 */
-	HAL_GPIO_WritePin(LED_G_GPIO_Port, LED_G_Pin | LED_R_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(RELAY_EN_GPIO_Port, RELAY_EN_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOB, PORTB_OUTPUT_PINS, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOA, PORTA_OUTPUT_PINS, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7 | GPIO_PIN_8, GPIO_PIN_RESET);		/* RAK UART Pins */
+
 	// Stop SYSTICK Timer
 	HAL_SuspendTick();
 
-
-	#if !TEST_LPWER
-	GPIO_InitTypeDef GPIO_InitStructure;
-	GPIO_InitStructure.Pin = GPIO_PIN_0;
-	GPIO_InitStructure.Mode = GPIO_MODE_ANALOG;
-	GPIO_InitStructure.Pull = GPIO_NOPULL;
-
-	HAL_GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-
-	// Module control pins -> low output
-	GPIO_InitTypeDef GPIOA_InitStructure;
-	GPIOA_InitStructure.Pin = EN_BATT_Pin| EEPROM_EN_Pin| GPIO_PIN_2| GPIO_PIN_3| RAK_EN_Pin;
-	GPIOA_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
-	GPIOA_InitStructure.Pull = GPIO_NOPULL;
-	HAL_GPIO_Init(GPIOA, &GPIOA_InitStructure);
-	#endif  /* End of !TEST_LPWER */
-
 	// Enter Stop Mode
-
 	HAL_PWREx_EnterSTOP2Mode(PWR_STOPENTRY_WFI);
 
 	//Wake up
@@ -1290,7 +1260,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	switch (GPIO_Pin)
 	{
-	case WK_ACL_Pin: //ACL wake up handler
+	case WAKEUP_Pin: //ACL wake up handler -- FIX ME NFC
 		g_acl_interrupt = true;
 		ACL_ReadSource();
 		ACL_EnableInterrupt();
@@ -1351,13 +1321,14 @@ int main(void)
 	HAL_Init();
 
 	/* USER CODE BEGIN Init */
+	HAL_Delay(100);
 	/* USER CODE END Init */
 
 	/* Configure the system clock */
 	SystemClock_Config();
 
 	/* USER CODE BEGIN SysInit */
-
+	HAL_Delay(100);
 	/* USER CODE END SysInit */
 
 	/* Initialize all configured peripherals */
@@ -1370,18 +1341,17 @@ int main(void)
 	MX_LPUART1_UART_Init();
 	MX_TIM16_Init();
 	MX_ADC1_Init();
-	/* USER CODE BEGIN 2 */
+  /* USER CODE BEGIN 2 */
 	#if DEBUG_ITM
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
-	GPIO_InitStruct.Pin = LED_R_Pin;
+	GPIO_InitStruct.Pin = GPIO_PIN_3;
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-	HAL_GPIO_Init(LED_R_GPIO_Port, &GPIO_InitStruct);
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 	#endif  /* End of DEBUG_ITM */
 
-	HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
-	HAL_Delay(500);
+
 	#if ENDLESS_HV_MEASURING
 	while(1)
 	{
@@ -1392,19 +1362,6 @@ int main(void)
 	#if HW_SYSTEST
 	Sys_Test();
 	#endif  /* End of HW_SYSTEST */
-	/************** Electrical fence testing ***************/
-	printf("Electrical fence testing... \n");
-	for (int count = 0; count < 10; ++count)
-	{
-		HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
-		HAL_Delay(100);
-		#if !DEBUG_ITM
-		HAL_GPIO_TogglePin(LED_R_GPIO_Port, LED_R_Pin);
-		#endif  /* End of DEBUG_ITM */
-		HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
-		HAL_Delay(100);
-	}
-	/*******************************************************/
 	/* USER CODE END 2 */
 
 	/* Init code for STM32_WPAN */
