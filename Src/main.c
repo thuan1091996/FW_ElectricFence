@@ -204,6 +204,7 @@ eTestStatus Sys_Test(void)
 	if(SYS_test == RET_OK)			printf("\nFW Test: OK \n");
 	else							printf("FW Test: Not OK \n");
 	EnterStopMode();
+	HAL_Delay(100);
 	ButtonsHandler();
 	if(g_acl_interrupt == true)
 	{
@@ -386,9 +387,10 @@ static void EEPROM_Write( uint16_t Address_U16, uint8_t* Data_U8P, uint16_t Len_
 
 eTestStatus EEPROM_FWTest(void)
 {
-	uint8_t uid[32]={0};
+
 	EEPROM_test = RET_FAIL;
 #if EEPROM_TEST
+	uint8_t uid[32]={0};
 	HAL_GPIO_WritePin(EEPROM_EN_GPIO_Port, EEPROM_EN_Pin, GPIO_PIN_SET);	//Enable EEPROM module
 	HAL_Delay(100);															//Wait for stable
 	////////////////////////////////////////////////////////////
@@ -1204,9 +1206,9 @@ void ButtonsHandler(void)
 {
 	if (g_buttonpressed == true)
 	{
-		if(HAL_GPIO_ReadPin(SW_DIS_GPIO_Port, SW_DIS_Pin) == GPIO_PIN_RESET) //Release
+		if(HAL_GPIO_ReadPin(SW_DIS_GPIO_Port, SW_DIS_Pin) == GPIO_PIN_SET) //Release
 		{
-			if(g_countbuttonpress <100)			//not stable press
+			if(g_countbuttonpress <10)			//not stable press
 			{
 
 			}
