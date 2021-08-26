@@ -675,13 +675,13 @@ eTestStatus LORA_FWTest(void)
 	LORA_test = RET_FAIL;
 	HAL_GPIO_WritePin(RAK_EN_GPIO_Port, RAK_EN_Pin, GPIO_PIN_SET);
 	HAL_Delay(2000);												//Wait for stable
+	__HAL_UART_ENABLE_IT(&hlpuart1,UART_IT_IDLE); 					/* Enable UART RX Idle interrupt */
+	HAL_UART_Receive_DMA(&hlpuart1, g_rxdmabuffer, RX_DMABUF_LEN);  /* Enable receive data via DMA */
 	#if LORA_TEST
 	#if DEBUG_AT_UART
 	HAL_GPIO_DeInit(GPIOA, GPIO_PIN_2);
 	HAL_GPIO_DeInit(GPIOA, GPIO_PIN_3);
 	#else
-	__HAL_UART_ENABLE_IT(&hlpuart1,UART_IT_IDLE); 					/* Enable UART RX Idle interrupt */
-	HAL_UART_Receive_DMA(&hlpuart1, g_rxdmabuffer, RX_DMABUF_LEN);  /* Enable receive data via DMA */
 	if(g_LoRaInit == false)
 	{
 		//Init LoRa & LoRaWan parameter in case not initialized yet
@@ -815,7 +815,7 @@ eTestStatus GPS_FWTest(void)
 	GPS_test = RET_FAIL;
 #if GPS_TEST
 	HAL_Delay(1000);
-//	HAL_GPIO_WritePin(GPS_EN_GPIO_Port, GPS_EN_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPS_EN_GPIO_Port, GPS_EN_Pin, GPIO_PIN_SET);
 	HAL_Delay(3000);												//Wait for GPS supply power stable
 	if (GPS_Settings() == true) GPS_test = RET_OK;
 	else						GPS_test = RET_FAIL;

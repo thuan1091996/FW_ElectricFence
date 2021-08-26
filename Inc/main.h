@@ -82,6 +82,14 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define EXT_IO_EN_GPIO_Port GPIOA
 #define OPA_SW_Pin GPIO_PIN_12
 #define OPA_SW_GPIO_Port GPIOA
+#define HV_POS_CHANNEL_Pin GPIO_PIN_0
+#define HV_POS_CHANNEL_GPIO_Port GPIOA
+#define HV_NEG_CHANNEL_Pin GPIO_PIN_5
+#define HV_NEG_CHANNEL_GPIO_Port GPIOA
+#define V12V_CHANNEL_Pin GPIO_PIN_7
+#define V12V_CHANNEL_GPIO_Port GPIOA
+#define NTC_CHANNEL_Pin GPIO_PIN_8
+#define NTC_CHANNEL_GPIO_Port GPIOA
 /* USER CODE BEGIN Private defines */
 #define USED								1
 #define NOT_USED							0
@@ -102,11 +110,11 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 
 #define EEPROM_TEST 						NOT_USED
 #define	ACL_TEST							USED
-#define GPS_TEST							NOT_USED
+#define GPS_TEST							USED
 
 #define ADC_TEST							USED
 
-#define LORA_TEST							NOT_USED
+#define LORA_TEST							USED
 #define TEST_SLEEPLORA						USED
 #if LORA_TEST
 #define LORAWAN_TEST						NOT_USED
@@ -126,7 +134,7 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #endif
 
 #define DEV_SLEEP							USED
-#define DEBUG_LPOWER						NOT_USED
+#define DEBUG_LPOWER						USED
 
 #define PROBE1								GPIO_PIN_11
 #define PROBE2								GPIO_PIN_12
