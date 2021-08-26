@@ -189,7 +189,7 @@ eTestStatus Sys_Test(void)
 	else							printf("FW Test EEPROM: Not OK \n");
 	printf("Testing LoRa ...\n");
 	if(LORA_FWTest() == RET_OK)	 	printf("FW Test LoRa: OK \n");
-	else							printf("FW Test LoRa: Not OK \n");
+	else						printf("FW Test LoRa: Not OK \n");
 
 	#if ADC_TEST
 	printf("Testing ADC ...\n");
@@ -727,7 +727,11 @@ eTestStatus LORA_FWTest(void)
 		printf("Failed to put RAK4200 into sleep mode \n");
 		return RET_FAIL;
 	}
-	printf("RAK4200 was slept\n");
+	else
+	{
+		printf("RAK4200 was slept\n");
+		return RET_OK;
+	}
 	#endif /*End of TEST_SLEEPLORA*/
 	return LORA_test;
 }

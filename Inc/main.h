@@ -98,16 +98,18 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define DEBUG_LORA_AT_UART					NOT_USED
 
 #define FW_TEST								USED
+#define HW_SYSTEST							USED
+
 #define EEPROM_TEST 						NOT_USED
 #define	ACL_TEST							USED
 #define GPS_TEST							NOT_USED
 
 #define ADC_TEST							USED
 
-#define LORA_TEST							USED
+#define LORA_TEST							NOT_USED
 #define TEST_SLEEPLORA						USED
 #if LORA_TEST
-#define LORAWAN_TEST						USED
+#define LORAWAN_TEST						NOT_USED
 #define CHANGE_DEVEUI						USED
 #define TEST_DOWNLINK						USED
 #endif  /* End of LORA_TEST */
