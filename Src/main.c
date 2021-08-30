@@ -131,6 +131,8 @@ volatile bool g_rak4200_newdata=false;
 volatile bool g_rtcwakeup=false;
 volatile bool g_testingble=false;
 uint32_t g_max_hv=0;
+volatile uint32_t g_pos_max=0;
+volatile uint32_t g_neg_max=0;
 RTC_TimeTypeDef curTime = {0};
 RTC_DateTypeDef curDate = {0};
 RTC_TimeTypeDef eventTime = {0};
@@ -157,6 +159,12 @@ eTestStatus ADC_FWTest(void);
 eTestStatus BLE_FWTest(void);
 
 eTestStatus ADC_ElecFenceTest(void);
+
+
+/* New option use interrupt instead of DMA */
+eTestStatus ADC_ElecFenceTestInt(void);
+
+
 eTestStatus HV_FWTest(void);
 void ButtonsHandler(void);
 void EnterStopMode(void);
@@ -970,16 +978,20 @@ void ADC_ElecFenceInit()
 	hadc1.Init.Resolution = ADC_RESOLUTION_12B;
 	hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
 	hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
-	hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
+	hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
 	hadc1.Init.LowPowerAutoWait = DISABLE;
-	hadc1.Init.ContinuousConvMode = ENABLE;
+	hadc1.Init.ContinuousConvMode = ENABLE;	/* Continuous */
 	hadc1.Init.NbrOfConversion = 2;
 	hadc1.Init.DiscontinuousConvMode = DISABLE;
 	hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
 	hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-	hadc1.Init.DMAContinuousRequests = ENABLE;
-	hadc1.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
-	hadc1.Init.OversamplingMode = DISABLE;
+	hadc1.Init.DMAContinuousRequests = DISABLE;
+	hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+	hadc1.Init.OversamplingMode = ENABLE;
+	hadc1.Init.Oversampling.Ratio = ADC_OVERSAMPLING_RATIO_4;
+	hadc1.Init.Oversampling.RightBitShift = ADC_RIGHTBITSHIFT_2;
+	hadc1.Init.Oversampling.TriggeredMode = ADC_TRIGGEREDMODE_SINGLE_TRIGGER;
+	hadc1.Init.Oversampling.OversamplingStopReset = ADC_REGOVERSAMPLING_CONTINUED_MODE;
 	if (HAL_ADC_Init(&hadc1) != HAL_OK)
 	{
 		Error_Handler();
@@ -1130,6 +1142,42 @@ eTestStatus ADC_ElecFenceTest(void)
 	return ADCElecFence_Test;
 }
 
+volatile uint32_t g_max_eoc=0;
+volatile uint32_t g_max_eos=0;
+
+#define T_HIGHVOLTAGE 1200*3	/* 1200 ms */
+eTestStatus ADC_ElecFenceTestInt(void)
+{
+	uint32_t est_time = HAL_GetTick() + T_HIGHVOLTAGE;
+	uint32_t cur_time=0;
+	ADCElecFence_Test = RET_FAIL;
+	#ifdef ADC_ELECFENCE_TEST
+	static bool IsReady = false;
+	if(IsReady == false)
+	{
+		ADC_ElecFenceInit();
+		IsReady = true;
+	}
+	/* Start measuring & converting */
+	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+	HAL_ADC_Start_IT(&hadc1);
+	while( cur_time < est_time)	/* Wait */
+	{
+		cur_time = HAL_GetTick();
+	}
+	HAL_ADC_Stop_IT(&hadc1);
+	g_pos_max= __LL_ADC_CALC_DATA_TO_VOLTAGE(3000, g_max_eoc, ADC_RESOLUTION_12B);
+	g_neg_max= __LL_ADC_CALC_DATA_TO_VOLTAGE(3000, g_max_eos, ADC_RESOLUTION_12B);
+	g_max_eoc=0;
+	g_max_eos=0;
+	#else
+	printf("----- Skipped test ----- \n");
+	#endif /*End of ADC_ELECFENCE_TEST*/
+	return ADCElecFence_Test;
+}
+
+
+
 /**************************************************************************************/
 /********************************---BLE TEST---****************************************/
 extern ELFence_Batt_Data_t Batt_Data;
@@ -1229,31 +1277,22 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
 	g_flag_dmahalf = true;
 }
 
+
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
+	uint32_t adc_data;
 	if(LL_ADC_IsActiveFlag_EOS(ADC1) != 0)  /* EOS event */
 	{
-		g_ui32ADCraw[2] = HAL_ADC_GetValue(&hadc1);
-		g_newadcdata = true;
+		adc_data = HAL_ADC_GetValue(&hadc1);
+		if (adc_data > g_max_eos )
+			g_max_eos = adc_data;
 	}
-	else									/* EOC event */
+	if(LL_ADC_IsActiveFlag_EOC(ADC1) != 0)/* EOC event */
 	{
-		static uint8_t eoc_count=0;
-		if(LL_ADC_IsActiveFlag_EOC(ADC1) != 0)
-		{
-			if(eoc_count == 0)
-			{
-				g_ui32ADCraw[0] = HAL_ADC_GetValue(&hadc1);
-				eoc_count++;
-			}
-			else
-			{
-				g_ui32ADCraw[1] = HAL_ADC_GetValue(&hadc1);
-				eoc_count=0;
-			}
-		}
+		adc_data = HAL_ADC_GetValue(&hadc1);
+		if (adc_data > g_max_eoc )
+			g_max_eoc = adc_data;
 	}
-
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
@@ -1362,6 +1401,24 @@ int main(void)
 	#if HW_SYSTEST
 	Sys_Test();
 	#endif  /* End of HW_SYSTEST */
+	/************** Electrical fence testing ***************/
+	printf("Electrical fence testing... \n");
+	for (int count = 0; count < 10; ++count)
+	{
+		HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
+		HAL_Delay(1);
+		#if !DEBUG_ITM
+		HAL_GPIO_TogglePin(LED_R_GPIO_Port, LED_R_Pin);
+		#endif  /* End of DEBUG_ITM */
+		HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
+		HAL_Delay(1);
+	}
+
+	while(1)
+	{
+		ADC_ElecFenceTestInt();
+	}
+	/*******************************************************/
 	/* USER CODE END 2 */
 
 	/* Init code for STM32_WPAN */
