@@ -189,7 +189,7 @@ eTestStatus Sys_Test(void)
 	else							printf("FW Test EEPROM: Not OK \n");
 	printf("Testing LoRa ...\n");
 	if(LORA_FWTest() == RET_OK)	 	printf("FW Test LoRa: OK \n");
-	else						printf("FW Test LoRa: Not OK \n");
+	else							printf("FW Test LoRa: Not OK \n");
 
 	#if ADC_TEST
 	printf("Testing ADC ...\n");
@@ -201,11 +201,14 @@ eTestStatus Sys_Test(void)
 	if(GPS_FWTest() == RET_OK)		printf("\nFW Test GPS: OK \n");
 	else							printf("FW Test GPS: Not OK \n");
 	SYS_test = 	EEPROM_test & ACL_test & LORA_test & GPS_test & ADC_test;
+
 	if(SYS_test == RET_OK)			printf("\nFW Test: OK \n");
 	else							printf("FW Test: Not OK \n");
+
 	EnterStopMode();
 	HAL_Delay(100);
 	ButtonsHandler();
+
 	if(g_acl_interrupt == true)
 	{
 		printf("ACL detected motion \n");
@@ -1004,9 +1007,9 @@ void ADC_ElecFenceInit()
 	}
 	/** Configure Regular Channel
 	 */
-	sConfig.Channel = ADC_CHANNEL_9;
+	sConfig.Channel = HV_POS_CHANNEL;
 	sConfig.Rank = ADC_REGULAR_RANK_1;
-	sConfig.SamplingTime = ADC_SAMPLETIME_24CYCLES_5;
+	sConfig.SamplingTime = ADC_SAMPLETIME_92CYCLES_5;
 	sConfig.SingleDiff = ADC_SINGLE_ENDED;
 	sConfig.OffsetNumber = ADC_OFFSET_NONE;
 	sConfig.Offset = 0;
@@ -1016,7 +1019,7 @@ void ADC_ElecFenceInit()
 	}
 	/** Configure Regular Channel
 	 */
-	sConfig.Channel = ADC_CHANNEL_15;
+	sConfig.Channel = HV_NEG_CHANNEL;
 	sConfig.Rank = ADC_REGULAR_RANK_2;
 	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
 	{
@@ -1407,19 +1410,9 @@ int main(void)
 	#if HW_SYSTEST
 	Sys_Test();
 	#endif  /* End of HW_SYSTEST */
+
 	/************** Electrical fence testing ***************/
 	printf("Electrical fence testing... \n");
-	for (int count = 0; count < 10; ++count)
-	{
-		HAL_GPIO_TogglePin(LED_G_GPIO_Port, LED_G_Pin);
-		HAL_Delay(1);
-		#if !DEBUG_ITM
-		HAL_GPIO_TogglePin(LED_R_GPIO_Port, LED_R_Pin);
-		#endif  /* End of DEBUG_ITM */
-		HAL_GPIO_TogglePin(BUZZER_GPIO_Port, BUZZER_Pin);
-		HAL_Delay(1);
-	}
-
 	while(1)
 	{
 		ADC_ElecFenceTestInt();

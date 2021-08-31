@@ -198,9 +198,7 @@ void SystemInit(void)
 	#else    /* program in FLASH */
 
 	/* OTA program will set the correct vector table address so when use OTA feature Vector Table Relocation should not be touch*/
-	#if BLE_CFG_OTA_REBOOT_CHAR
 	SCB->VTOR = VECT_TAB_OFFSET;              /* Vector Table Relocation in Internal FLASH */
-	#endif  /* End of BLE_CFG_OTA_REBOOT_CHAR */
 #endif
 
   /* FPU settings ------------------------------------------------------------*/
