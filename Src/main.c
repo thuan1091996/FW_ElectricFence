@@ -191,7 +191,7 @@ eTestStatus Sys_Test(void)
 	if(LORA_FWTest() == RET_OK)	 	printf("FW Test LoRa: OK \n");
 	else							printf("FW Test LoRa: Not OK \n");
 
-	#if ADC_TEST
+	#if (ADC_TEST && !(ADC_ELECFENCE_TEST) )
 	printf("Testing ADC ...\n");
 	if(ADC_FWTest() == RET_OK)	 	printf("FW Test ADC: OK \n");
 	else							printf("FW Test ADC: Not OK \n");
@@ -1031,7 +1031,7 @@ uint32_t g_adc_pos=0;
 uint32_t g_adc_neg=0;
 eTestStatus HV_FWTest(void)
 {
-	OPA_SW_SET(TRUE);
+	HAL_GPIO_WritePin(OPA_SW_GPIO_Port, OPA_SW_Pin, GPIO_PIN_SET);
 	ADC_HVInit();
 	HAL_Delay(100);
 	while(1)
@@ -1164,6 +1164,7 @@ eTestStatus ADC_ElecFenceTestInt(void)
 	static bool IsReady = false;
 	if(IsReady == false)
 	{
+		HAL_GPIO_WritePin(OPA_SW_GPIO_Port, OPA_SW_Pin, GPIO_PIN_SET);
 		ADC_ElecFenceInit();
 		IsReady = true;
 	}
@@ -1177,6 +1178,9 @@ eTestStatus ADC_ElecFenceTestInt(void)
 	HAL_ADC_Stop_IT(&hadc1);
 	g_pos_max= __LL_ADC_CALC_DATA_TO_VOLTAGE(3000, g_max_eoc, ADC_RESOLUTION_12B);
 	g_neg_max= __LL_ADC_CALC_DATA_TO_VOLTAGE(3000, g_max_eos, ADC_RESOLUTION_12B);
+
+	printf("HV positive: %d     HV negative: %d \n\n", g_pos_max, g_neg_max);
+
 	g_max_eoc=0;
 	g_max_eos=0;
 	#else
@@ -1286,7 +1290,8 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
 	g_flag_dmahalf = true;
 }
 
-
+//FIXME: Battery read & HV both use interrupt (2 channels vs 3 channels)
+#if ADC_ELECFENCE_TEST
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
 	uint32_t adc_data;
@@ -1303,6 +1308,34 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 			g_max_eoc = adc_data;
 	}
 }
+#else
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+	if(LL_ADC_IsActiveFlag_EOS(ADC1) != 0)  /* EOS event */
+	{
+		g_ui32ADCraw[2] = HAL_ADC_GetValue(&hadc1);
+		g_newadcdata = true;
+	}
+	else									/* EOC event */
+	{
+		static uint8_t eoc_count=0;
+		if(LL_ADC_IsActiveFlag_EOC(ADC1) != 0)
+		{
+			if(eoc_count == 0)
+			{
+				g_ui32ADCraw[0] = HAL_ADC_GetValue(&hadc1);
+				eoc_count++;
+			}
+			else
+			{
+				g_ui32ADCraw[1] = HAL_ADC_GetValue(&hadc1);
+				eoc_count=0;
+			}
+		}
+	}
+
+}
+#endif  /* End of ADC_ELECFENCE_TEST */
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
