@@ -1154,7 +1154,7 @@ eTestStatus ADC_ElecFenceTest(void)
 volatile uint32_t g_max_eoc=0;
 volatile uint32_t g_max_eos=0;
 
-#define T_HIGHVOLTAGE 1200*3	/* 1200 ms */
+#define T_HIGHVOLTAGE 1200*2	/* 1200 ms */
 eTestStatus ADC_ElecFenceTestInt(void)
 {
 	uint32_t est_time = HAL_GetTick() + T_HIGHVOLTAGE;
@@ -1164,6 +1164,7 @@ eTestStatus ADC_ElecFenceTestInt(void)
 	static bool IsReady = false;
 	if(IsReady == false)
 	{
+		HAL_GPIO_WritePin(VREF_EN_GPIO_Port, VREF_EN_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(OPA_SW_GPIO_Port, OPA_SW_Pin, GPIO_PIN_SET);
 		ADC_ElecFenceInit();
 		IsReady = true;
@@ -1179,7 +1180,10 @@ eTestStatus ADC_ElecFenceTestInt(void)
 	g_pos_max= __LL_ADC_CALC_DATA_TO_VOLTAGE(3000, g_max_eoc, ADC_RESOLUTION_12B);
 	g_neg_max= __LL_ADC_CALC_DATA_TO_VOLTAGE(3000, g_max_eos, ADC_RESOLUTION_12B);
 
-	printf("HV positive: %d     HV negative: %d \n\n", g_pos_max, g_neg_max);
+	g_pos_max = (uint32_t) (g_pos_max * 5.318);
+	g_neg_max = (uint32_t) (g_neg_max *5.318);
+
+	printf("HV positive: %d (V)    HV negative: %d (V)\n\n", g_pos_max, g_neg_max);
 
 	g_max_eoc=0;
 	g_max_eos=0;
@@ -1291,7 +1295,22 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
 }
 
 //FIXME: Battery read & HV both use interrupt (2 channels vs 3 channels)
-#if ADC_ELECFENCE_TEST
+
+
+#if PLOT_HV_ADC
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+	if(LL_ADC_IsActiveFlag_EOS(ADC1) != 0)  /* EOS event */
+	{
+		g_ui32_neg = HAL_ADC_GetValue(&hadc1);
+	}
+	else if(LL_ADC_IsActiveFlag_EOC(ADC1) != 0)									/* EOC event */
+	{
+		g_ui32_pos = HAL_ADC_GetValue(&hadc1);
+	}
+
+}
+#elif ADC_ELECFENCE_TEST
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
 	uint32_t adc_data;
@@ -1445,11 +1464,13 @@ int main(void)
 	#endif  /* End of HW_SYSTEST */
 
 	/************** Electrical fence testing ***************/
+	#if ADC_ELECFENCE_TEST
 	printf("Electrical fence testing... \n");
 	while(1)
 	{
 		ADC_ElecFenceTestInt();
 	}
+	#endif  /* End of ADC_ELECFENCE_TEST */
 	/*******************************************************/
 	/* USER CODE END 2 */
 

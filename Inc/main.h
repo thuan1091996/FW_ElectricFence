@@ -95,7 +95,7 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define NOT_USED							0
 #define FW_ELECFENCE
 
-#define ADC_ELECFENCE_TEST					NOT_USED
+#define ADC_ELECFENCE_TEST					USED
 #define PLOT_HV_ADC							NOT_USED
 
 #define ENDLESS_LOOP_ACL					NOT_USED
@@ -105,14 +105,19 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define ENDLESS_HV_MEASURING				NOT_USED
 #define DEBUG_LORA_AT_UART					NOT_USED
 
+
 #define FW_TEST								USED
-#define HW_SYSTEST							USED
+#define HW_SYSTEST							NOT_USED
 
 #define EEPROM_TEST 						NOT_USED
 #define	ACL_TEST							USED
 #define GPS_TEST							USED
 
+#if ADC_ELECFENCE_TEST
+#define ADC_TEST							NOT_USED
+#else
 #define ADC_TEST							USED
+#endif  /* End of ADC_ELECFENCE_TEST */
 
 #define LORA_TEST							USED
 #define TEST_SLEEPLORA						USED
@@ -122,7 +127,7 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define TEST_DOWNLINK						USED
 #endif  /* End of LORA_TEST */
 
-#define BLE_TEST							USED
+#define BLE_TEST							NOT_USED
 #define	DISABLE_ACL_IRQ						USED
 
 
@@ -145,7 +150,6 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define BATT_ADC_CHANNEL					ADC_CHANNEL_11
 #define V12V_ADC_CHANNEL					ADC_CHANNEL_12
 #define NTC_TEMP_CHANNEL					ADC_CHANNEL_15
-
 
 #define TOGGLE_PIN(PIN)						UNSED(PIN)		//TODO: Implement
 #define OPA_SW_SET(STATE)					UNSED(STATE)	//TODO: Implement
