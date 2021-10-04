@@ -95,7 +95,7 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define NOT_USED							0
 #define FW_ELECFENCE
 
-#define ADC_ELECFENCE_TEST					USED
+#define ADC_ELECFENCE_TEST					NOT_USED
 #define PLOT_HV_ADC							NOT_USED
 
 #define ENDLESS_LOOP_ACL					NOT_USED
@@ -107,7 +107,7 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 
 
 #define FW_TEST								USED
-#define HW_SYSTEST							NOT_USED
+#define HW_SYSTEST							USED
 
 #define EEPROM_TEST 						NOT_USED
 #define	ACL_TEST							USED
@@ -119,8 +119,8 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define ADC_TEST							USED
 #endif  /* End of ADC_ELECFENCE_TEST */
 
-#define LORA_TEST							USED
-#define TEST_SLEEPLORA						USED
+#define LORA_TEST							NOT_USED
+#define TEST_SLEEPLORA						NOT_USED
 #if LORA_TEST
 #define LORAWAN_TEST						NOT_USED
 #define CHANGE_DEVEUI						USED
@@ -128,7 +128,7 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #endif  /* End of LORA_TEST */
 
 #define BLE_TEST							NOT_USED
-#define	DISABLE_ACL_IRQ						USED
+#define	DISABLE_ACL_IRQ						NOT_USED
 
 
 #define DEBUG_CONSOLE						USED

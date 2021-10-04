@@ -179,7 +179,6 @@ void DebugProbeInit(void);
 eTestStatus Sys_Test(void)
 {
 	SYS_test = RET_FAIL;
-	DebugProbeInit();
 	printf("FW Test started... \n");
 	printf("Testing ACL ...\n");
 	if(ACL_FWTest() == RET_OK )		printf("FW Test ACL: OK \n");
@@ -1267,7 +1266,10 @@ void EnterStopMode( void)
 	// Module control pins -> low output
 	HAL_GPIO_WritePin(GPIOB, PORTB_OUTPUT_PINS, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(GPIOA, PORTA_OUTPUT_PINS, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7 | GPIO_PIN_8, GPIO_PIN_RESET);		/* RAK UART Pins */
+
+
+	HAL_GPIO_DeInit(GPIOB, (GPIO_PIN_6 | GPIO_PIN_7) );
+	HAL_GPIO_DeInit(GPIOA, (GPIO_PIN_2 | GPIO_PIN_3) );
 
 	// Stop SYSTICK Timer
 	HAL_SuspendTick();
@@ -1490,6 +1492,7 @@ int main(void)
 		/* USER CODE BEGIN 3 */
 		#if BLE_TEST
 		UTIL_SEQ_Run(~0);
+		BLE_TestNotify();
 		#endif  /* End of BLE_TEST */
 
 		#if PLOT_HV_ADC
@@ -1501,7 +1504,7 @@ int main(void)
 		printf("HV %d (mV)\n", g_max_hv);
 		#endif  /* End of ADC_ELECFENCE_TEST */
 
-		BLE_TestNotify();
+
 	}
 	/* USER CODE END 3 */
 }
