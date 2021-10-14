@@ -266,7 +266,7 @@ void SVCCTL_InitCustomSvc(void)
                       &(CustomContext.CustomElecfenceHdle));
 
     /**
-     *  HVOLTAGE
+     *  STATUS
      */
     COPY_HVOLTAGE_UUID(uuid.Char_UUID_128);
     aci_gatt_add_char(CustomContext.CustomElecfenceHdle,
@@ -279,7 +279,7 @@ void SVCCTL_InitCustomSvc(void)
                       CHAR_VALUE_LEN_CONSTANT,
                       &(CustomContext.CustomHvHdle));
     /**
-     *  BATTERY
+     *  FRAME DATA
      */
     COPY_BATTERY_UUID(uuid.Char_UUID_128);
     aci_gatt_add_char(CustomContext.CustomElecfenceHdle,

@@ -111,7 +111,7 @@ void Custom_STM_App_Notification(Custom_STM_App_Notification_evt_t *pNotificatio
 
 		case CUSTOM_STM_HV_NOTIFY_ENABLED_EVT:
 			/* USER CODE BEGIN CUSTOM_STM_HV_NOTIFY_ENABLED_EVT */
-			APP_DBG_MSG("\r\n\r** HIGH VOLTAGE NOTIFY ENABLED \n");
+			APP_DBG_MSG("\r\n\r** STATUS NOTIFY ENABLED \n");
 
 	//		Custom
 			/* USER CODE END CUSTOM_STM_HV_NOTIFY_ENABLED_EVT */
@@ -119,7 +119,7 @@ void Custom_STM_App_Notification(Custom_STM_App_Notification_evt_t *pNotificatio
 
 		case CUSTOM_STM_HV_NOTIFY_DISABLED_EVT:
 			/* USER CODE BEGIN CUSTOM_STM_HV_NOTIFY_DISABLED_EVT */
-			APP_DBG_MSG("\r\n\r** HIGH VOLTAGE NOTIFY DISABLED \n");
+			APP_DBG_MSG("\r\n\r** STATUS NOTIFY DISABLED \n");
 			/* USER CODE END CUSTOM_STM_HV_NOTIFY_DISABLED_EVT */
 		break;
 
@@ -132,14 +132,14 @@ void Custom_STM_App_Notification(Custom_STM_App_Notification_evt_t *pNotificatio
 		case CUSTOM_STM_VBAT_NOTIFY_ENABLED_EVT:
 			/* USER CODE BEGIN CUSTOM_STM_VBAT_NOTIFY_ENABLED_EVT */
 			Batt_Data.Is_NotifyEn_B = true;
-			APP_DBG_MSG("\r\n\r** BATTERY NOTIFY ENABLED \n");
+			APP_DBG_MSG("\r\n\r** FRAME NOTIFY ENABLED \n");
 			/* USER CODE END CUSTOM_STM_VBAT_NOTIFY_ENABLED_EVT */
 		break;
 
 		case CUSTOM_STM_VBAT_NOTIFY_DISABLED_EVT:
 			/* USER CODE BEGIN CUSTOM_STM_VBAT_NOTIFY_DISABLED_EVT */
 			Batt_Data.Is_NotifyEn_B = false;
-			APP_DBG_MSG("\r\n\r** BATTERY NOTIFY DISABLED \n");
+			APP_DBG_MSG("\r\n\r** FRAME NOTIFY DISABLED \n");
 			/* USER CODE END CUSTOM_STM_VBAT_NOTIFY_DISABLED_EVT */
 		break;
 
