@@ -97,6 +97,9 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 
 #define ADC_ELECFENCE_TEST					NOT_USED
 #define PLOT_HV_ADC							NOT_USED
+#define HV_MAX_OF_BOTH_ADCS					USED	/* Used DMA to find max ADC value of both channel */
+#define HV_MAX_EACH_ADC_CHANNEL				NOT_USED	/* Used interrupt to find max ADC value of each channel */
+
 
 #define ENDLESS_LOOP_ACL					NOT_USED
 #define ENDLESS_LOOP_DYP					NOT_USED

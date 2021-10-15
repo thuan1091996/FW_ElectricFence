@@ -158,14 +158,14 @@ eTestStatus GPS_FWTest(void);
 eTestStatus ADC_FWTest(void);
 eTestStatus BLE_FWTest(void);
 
+/* Find the max ADC value in both ADC channels using DMA */
 eTestStatus ADC_ElecFenceTest(void);
 
-
-/* New option use interrupt instead of DMA */
+/* New option use interrupt instead of DMA to find Max ADC of each channel*/
 eTestStatus ADC_ElecFenceTestInt(void);
 
 
-eTestStatus HV_FWTest(void);
+eTestStatus HV_Monitor(void);
 void ButtonsHandler(void);
 void EnterStopMode(void);
 void DebugProbeInit(void);
@@ -204,6 +204,7 @@ eTestStatus Sys_Test(void)
 	if(SYS_test == RET_OK)			printf("\nFW Test: OK \n");
 	else							printf("FW Test: Not OK \n");
 
+	#if DEV_SLEEP
 	EnterStopMode();
 	HAL_Delay(100);
 	ButtonsHandler();
@@ -222,7 +223,7 @@ eTestStatus Sys_Test(void)
 		printf("Wake up from no where \n");
 	}
 	HAL_Delay(100);
-
+	#endif  /* End of DEV_SLEEP */
 	return SYS_test;
 }
 
@@ -677,11 +678,12 @@ bool LoRa_SendCMD(uint8_t* p_cmd, uint16_t len, uint16_t timeout)
 eTestStatus LORA_FWTest(void)
 {
 	LORA_test = RET_FAIL;
+	#if LORA_TEST
 	HAL_GPIO_WritePin(RAK_EN_GPIO_Port, RAK_EN_Pin, GPIO_PIN_SET);
 	HAL_Delay(2000);												//Wait for stable
 	__HAL_UART_ENABLE_IT(&hlpuart1,UART_IT_IDLE); 					/* Enable UART RX Idle interrupt */
 	HAL_UART_Receive_DMA(&hlpuart1, g_rxdmabuffer, RX_DMABUF_LEN);  /* Enable receive data via DMA */
-	#if LORA_TEST
+
 	#if DEBUG_AT_UART
 	HAL_GPIO_DeInit(GPIOA, GPIO_PIN_2);
 	HAL_GPIO_DeInit(GPIOA, GPIO_PIN_3);
@@ -1028,8 +1030,11 @@ void ADC_ElecFenceInit()
 
 uint32_t g_adc_pos=0;
 uint32_t g_adc_neg=0;
-eTestStatus HV_FWTest(void)
+
+/* This function configure the MCU to continously read 2 ADC channels without doing anything else */
+eTestStatus HV_Monitor(void)
 {
+	HAL_GPIO_WritePin(VREF_EN_GPIO_Port, VREF_EN_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(OPA_SW_GPIO_Port, OPA_SW_Pin, GPIO_PIN_SET);
 	ADC_HVInit();
 	HAL_Delay(100);
@@ -1100,6 +1105,8 @@ uint32_t GetLargest(uint32_t* p_arr, uint32_t len)
     return max;
 }
 
+
+/* Find the max ADC value in both ADC channels using DMA */
 eTestStatus ADC_ElecFenceTest(void)
 {
 	ADCElecFence_Test = RET_FAIL;
@@ -1154,6 +1161,8 @@ volatile uint32_t g_max_eoc=0;
 volatile uint32_t g_max_eos=0;
 
 #define T_HIGHVOLTAGE 1200*2	/* 1200 ms */
+
+/* Find the max values in each ADC channel using interrupt */
 eTestStatus ADC_ElecFenceTestInt(void)
 {
 	uint32_t est_time = HAL_GetTick() + T_HIGHVOLTAGE;
@@ -1248,7 +1257,6 @@ void DebugProbeInit(void)
 
 void EnterStopMode( void)
 {
-	#if DEV_SLEEP
 	printf("Entering stop 2 mode...\n");
 
 	LL_C2_PWR_SetPowerMode(LL_PWR_MODE_SHUTDOWN);
@@ -1283,7 +1291,6 @@ void EnterStopMode( void)
 	// Resume SYSTICK Timer
 	HAL_ResumeTick();
 	printf("Waked up from stop 2 \n");
-	#endif  /* End of DEV_SLEEP */
 }
 
 void HAL_ADC_ErrorCallback(ADC_HandleTypeDef *hadc)
@@ -1300,6 +1307,7 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
 
 
 #if PLOT_HV_ADC
+/* Quickly collect ADC data (raw ADC negative and ADC positive) */
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
 	if(LL_ADC_IsActiveFlag_EOS(ADC1) != 0)  /* EOS event */
@@ -1313,6 +1321,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 
 }
 #elif ADC_ELECFENCE_TEST
+/* Find max ADC data from both channels (raw ADC negative and ADC positive) */
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
 	uint32_t adc_data;
@@ -1454,25 +1463,18 @@ int main(void)
 	#endif  /* End of DEBUG_ITM */
 
 
-	#if ENDLESS_HV_MEASURING
-	while(1)
-	{
-		ADC_ElecFenceTest();
-	}
-	#endif  /* End of ENDLESS_HV_MEASURING */
-
 	#if HW_SYSTEST
 	Sys_Test();
 	#endif  /* End of HW_SYSTEST */
 
 	/************** Electrical fence testing ***************/
-	#if ADC_ELECFENCE_TEST
+	#if HV_MAX_EACH_ADC_CHANNEL
 	printf("Electrical fence testing... \n");
 	while(1)
 	{
 		ADC_ElecFenceTestInt();
 	}
-	#endif  /* End of ADC_ELECFENCE_TEST */
+	#endif  /* End of HV_MAX_EACH_ADC_CHANNEL */
 	/*******************************************************/
 	/* USER CODE END 2 */
 
@@ -1496,13 +1498,13 @@ int main(void)
 		#endif  /* End of BLE_TEST */
 
 		#if PLOT_HV_ADC
-		HV_FWTest();
+		HV_Monitor();
 		#endif  /* End of PLOT_HV_ADC */
 
-		#if ADC_ELECFENCE_TEST
+		#if HV_MAX_OF_BOTH_ADCS
 		ADC_ElecFenceTest();
 		printf("HV %d (mV)\n", g_max_hv);
-		#endif  /* End of ADC_ELECFENCE_TEST */
+		#endif  /* End of HV_MAX_OF_BOTH_ADCS */
 
 
 	}
