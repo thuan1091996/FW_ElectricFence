@@ -20,7 +20,7 @@
 #include "rtc.h"
 #include "tim.h"
 #include "gpio.h"
-
+#include "spi.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "stm32_seq.h"
@@ -1279,6 +1279,13 @@ void EnterStopMode( void)
 	HAL_GPIO_DeInit(GPIOB, (GPIO_PIN_6 | GPIO_PIN_7) );
 	HAL_GPIO_DeInit(GPIOA, (GPIO_PIN_2 | GPIO_PIN_3) );
 
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+    GPIO_InitStruct.Pin = GPIO_PIN_15;
+    GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
 	// Stop SYSTICK Timer
 	HAL_SuspendTick();
 
@@ -1436,6 +1443,7 @@ int main(void)
 	/* USER CODE END Init */
 
 	/* Configure the system clock */
+
 	SystemClock_Config();
 
 	/* USER CODE BEGIN SysInit */
@@ -1452,6 +1460,8 @@ int main(void)
 	MX_LPUART1_UART_Init();
 	MX_TIM16_Init();
 	MX_ADC1_Init();
+	MX_SPI1_Init();
+
   /* USER CODE BEGIN 2 */
 	#if DEBUG_ITM
 	GPIO_InitTypeDef GPIO_InitStruct = {0};

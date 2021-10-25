@@ -130,8 +130,8 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define TEST_DOWNLINK						USED
 #endif  /* End of LORA_TEST */
 
-#define BLE_TEST							NOT_USED
-#define	DISABLE_ACL_IRQ						NOT_USED
+#define BLE_TEST							USED
+#define	DISABLE_ACL_IRQ						USED
 
 
 #define DEBUG_CONSOLE						USED
@@ -142,7 +142,7 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #endif
 
 #define DEV_SLEEP							USED
-#define DEBUG_LPOWER						USED
+#define DEBUG_LPOWER						NOT_USED
 
 #define PROBE1								GPIO_PIN_11
 #define PROBE2								GPIO_PIN_12
