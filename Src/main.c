@@ -1280,6 +1280,7 @@ uint32_t g_ui32bat=0;
 #else
 #define BUF_SIZE	5	/* VREF | ADC 3.3 | ADC 12V | ADC+ | ADC- */
 #define ADC_DMA_BUF_LEN			10000
+#define T_HIGHVOLTAGE 1200*2	/* 1200 ms */
 
 uint32_t ADC_DMA_BUF[ADC_DMA_BUF_LEN]={0};
 uint32_t ADC_DMA_DATA[ADC_DMA_BUF_LEN/2]={0};
@@ -1288,18 +1289,58 @@ uint32_t ADC_DMA_DATA[ADC_DMA_BUF_LEN/2]={0};
 uint32_t g_ui32_12v=0;
 uint32_t g_ui32_pos=0;
 uint32_t g_ui32_neg=0;
+
+uint32_t g_adc_pos=0;
+uint32_t g_adc_neg=0;
 #endif  /* End of ifdef FW_ELECFENCE */
 
 uint32_t g_ui32ADCraw[BUF_SIZE]={0};	/* Raw ADC input data */
 uint32_t g_ui32input[BUF_SIZE-1]={0}; 	/* Ignore Vref */
+
+volatile uint32_t g_max_eoc=0;
+volatile uint32_t g_max_eos=0;
+
 volatile bool g_newadcdata=false;		/* New ADC data flag */
 volatile bool g_useddma = false;		/* true => DMA(HV), false => ADC interrupt (EOS,EOC - battery)*/
 volatile bool g_flag_dmahalf = false;
 volatile bool g_flag_dmafull = false;
 
+
+uint16_t ADC_ReadData()
+{
+	uint16_t ui16_adcdata=0;
+
+	if (HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED) != HAL_OK)
+	{
+		/* Calibration Error */
+		return ui16_adcdata;
+	}
+
+	if (HAL_ADC_Start(&hadc1) != HAL_OK)
+	{
+		/* ADC conversion start error */
+		return ui16_adcdata;
+	}
+
+	/* Read data of configured channel */
+	if (HAL_ADC_PollForConversion(&hadc1, 1000) != HAL_OK)
+	{
+		return ui16_adcdata;
+	}
+
+	if (HAL_ADC_Stop(&hadc1) != HAL_OK)
+	{
+		/* ADC conversion stop error */
+		return ui16_adcdata;
+	}
+	ui16_adcdata = HAL_ADC_GetValue(&hadc1);
+
+	return ui16_adcdata;
+}
+
 void ADC_PowerInit()
 {
-	g_useddma = false;
+	//FIXME: This is what 1h est make not me
 	ADC_ChannelConfTypeDef sConfig = {0};
 	HAL_ADC_DeInit(&hadc1);
 
@@ -1311,7 +1352,7 @@ void ADC_PowerInit()
 	hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
 	hadc1.Init.LowPowerAutoWait = DISABLE;
 	hadc1.Init.ContinuousConvMode = DISABLE;
-	hadc1.Init.NbrOfConversion = 3;
+	hadc1.Init.NbrOfConversion = 1;
 	hadc1.Init.DiscontinuousConvMode = DISABLE;
 	hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
 	hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
@@ -1326,8 +1367,7 @@ void ADC_PowerInit()
 	{
 		Error_Handler();
 	}
-	/** Configure Regular Channel
-	 */
+
 	sConfig.Channel = ADC_CHANNEL_VREFINT;
 	sConfig.Rank = ADC_REGULAR_RANK_1;
 	sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
@@ -1338,22 +1378,31 @@ void ADC_PowerInit()
 	{
 		Error_Handler();
 	}
+
+	/* Read Raw ADC VREF  */
+	g_ui32ADCraw[0] = ADC_ReadData();
+
 	/** Configure Regular Channel
 	 */
 	sConfig.Channel = BATT_ADC_CHANNEL;
-	sConfig.Rank = ADC_REGULAR_RANK_2;
+	sConfig.Rank = ADC_REGULAR_RANK_1;
 	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
 	{
 		Error_Handler();
 	}
+	/* Read Raw ADC Vbat  */
+	g_ui32ADCraw[1] = ADC_ReadData();
+
 	/** Configure Regular Channel
 	 */
 	sConfig.Channel = V12V_ADC_CHANNEL;
-	sConfig.Rank = ADC_REGULAR_RANK_3;
+	sConfig.Rank = ADC_REGULAR_RANK_1;
 	if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
 	{
 		Error_Handler();
 	}
+	/* Read Raw ADC V12V  */
+	g_ui32ADCraw[2] = ADC_ReadData();
 
 }
 
@@ -1434,7 +1483,7 @@ void ADC_ElecFenceInit()
 	hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
 	hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
 	hadc1.Init.DMAContinuousRequests = DISABLE;
-	hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+	hadc1.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
 	hadc1.Init.OversamplingMode = ENABLE;
 	hadc1.Init.Oversampling.Ratio = ADC_OVERSAMPLING_RATIO_4;
 	hadc1.Init.Oversampling.RightBitShift = ADC_RIGHTBITSHIFT_2;
@@ -1466,9 +1515,6 @@ void ADC_ElecFenceInit()
 	}
 }
 
-uint32_t g_adc_pos=0;
-uint32_t g_adc_neg=0;
-
 /* This function configure the MCU to continously read 2 ADC channels without doing anything else */
 eTestStatus HV_Monitor(void)
 {
@@ -1496,19 +1542,15 @@ eTestStatus HV_Monitor(void)
 
 eTestStatus ADC_FWTest(void)
 {
-	ADC_PowerInit();
 	ADC_test = RET_FAIL;
 	#ifdef ADC_TEST
 	HAL_GPIO_WritePin(VREF_EN_GPIO_Port, VREF_EN_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(RELAY_EN_GPIO_Port, RELAY_EN_Pin, GPIO_PIN_SET);
 	HAL_Delay(500);			/* Wait for stable */
+	ADC_PowerInit();
 	while(1)
 	{
-		HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
-		HAL_ADC_Start_IT(&hadc1);
-		while(g_newadcdata != true);
 		ADC_test = RET_OK;
-		HAL_ADC_Stop_IT(&hadc1);
 		g_ui32vref = __LL_ADC_CALC_VREFANALOG_VOLTAGE(g_ui32ADCraw[0], ADC_RESOLUTION_12B);
 		g_ui32input[0]= __LL_ADC_CALC_DATA_TO_VOLTAGE(g_ui32vref, g_ui32ADCraw[1], ADC_RESOLUTION_12B);
 		g_ui32input[1]= __LL_ADC_CALC_DATA_TO_VOLTAGE(g_ui32vref, g_ui32ADCraw[2], ADC_RESOLUTION_12B);
@@ -1542,7 +1584,6 @@ uint32_t GetLargest(uint32_t* p_arr, uint32_t len)
     }
     return max;
 }
-
 
 /* Find the max ADC value in both ADC channels using DMA */
 eTestStatus ADC_ElecFenceTest(void)
@@ -1595,11 +1636,6 @@ eTestStatus ADC_ElecFenceTest(void)
 	return ADCElecFence_Test;
 }
 
-volatile uint32_t g_max_eoc=0;
-volatile uint32_t g_max_eos=0;
-
-#define T_HIGHVOLTAGE 1200*2	/* 1200 ms */
-
 /* Find the max values in each ADC channel using interrupt */
 eTestStatus ADC_ElecFenceTestInt(void)
 {
@@ -1638,8 +1674,6 @@ eTestStatus ADC_ElecFenceTestInt(void)
 	#endif /*End of ADC_ELECFENCE_TEST*/
 	return ADCElecFence_Test;
 }
-
-
 
 /**************************************************************************************/
 /********************************---BLE TEST---****************************************/
@@ -1748,8 +1782,6 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
 	g_flag_dmahalf = true;
 }
 
-//FIXME: Battery read & HV both use interrupt (2 channels vs 3 channels)
-
 
 #if PLOT_HV_ADC
 /* Quickly collect ADC data (raw ADC negative and ADC positive) */
@@ -1769,6 +1801,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 /* Find max ADC data from both channels (raw ADC negative and ADC positive) */
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
+	//FIXME: Continuously interrupt for about 1200*2 (ms) to find HV max values
 	uint32_t adc_data;
 	if(LL_ADC_IsActiveFlag_EOS(ADC1) != 0)  /* EOS event */
 	{
@@ -1784,31 +1817,8 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 	}
 }
 #else
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *p_hadc)
 {
-	if(LL_ADC_IsActiveFlag_EOS(ADC1) != 0)  /* EOS event */
-	{
-		g_ui32ADCraw[2] = HAL_ADC_GetValue(&hadc1);
-		g_newadcdata = true;
-	}
-	else									/* EOC event */
-	{
-		static uint8_t eoc_count=0;
-		if(LL_ADC_IsActiveFlag_EOC(ADC1) != 0)
-		{
-			if(eoc_count == 0)
-			{
-				g_ui32ADCraw[0] = HAL_ADC_GetValue(&hadc1);
-				eoc_count++;
-			}
-			else
-			{
-				g_ui32ADCraw[1] = HAL_ADC_GetValue(&hadc1);
-				eoc_count=0;
-			}
-		}
-	}
-
 }
 #endif  /* End of ADC_ELECFENCE_TEST */
 
