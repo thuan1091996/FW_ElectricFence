@@ -60,6 +60,8 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define RX_BUF_LEN 100
 #define EEPROM_EN_Pin GPIO_PIN_1
 #define EEPROM_EN_GPIO_Port GPIOA
+#define FLASH_EN_Pin GPIO_PIN_1
+#define FLASH_EN_GPIO_Port GPIOA
 #define GPS_EN_Pin GPIO_PIN_4
 #define GPS_EN_GPIO_Port GPIOA
 #define ADC_BATT_Pin GPIO_PIN_6

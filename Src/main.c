@@ -29,6 +29,7 @@
 #include "AT0x.h"
 #include "MMA865x.h"
 #include "L80.h"
+#include "AT25SF321x.h"
 #include "custom_stm.h"
 #include "custom_app.h"
 /* USER CODE END Includes */
@@ -44,7 +45,7 @@ typedef enum eTestStatus
 	RET_TIMEOUT
 }eTestStatus;
 eTestStatus SYS_test, EEPROM_test, ACL_test, LORA_test,
-GPS_test, ADC_test, BLE_test, BUTTON_test, ADCElecFence_Test;
+GPS_test, ADC_test, BLE_test, BUTTON_test, ADCElecFence_Test, FLASH_test, I_O_test;
 
 /* I2C Transfer */
 typedef enum {
@@ -157,7 +158,7 @@ eTestStatus LORA_FWTest(void);
 eTestStatus GPS_FWTest(void);
 eTestStatus ADC_FWTest(void);
 eTestStatus BLE_FWTest(void);
-
+eTestStatus Flash_FWTest(void);
 /* Find the max ADC value in both ADC channels using DMA */
 eTestStatus ADC_ElecFenceTest(void);
 
@@ -183,9 +184,11 @@ eTestStatus Sys_Test(void)
 	printf("Testing ACL ...\n");
 	if(ACL_FWTest() == RET_OK )		printf("FW Test ACL: OK \n");
 	else							printf("FW Test ACL: Not OK \n");
+
 	printf("Testing EEPROM ...\n");
 	if(EEPROM_FWTest() == RET_OK )	printf("FW Test EEPROM: OK \n");
 	else							printf("FW Test EEPROM: Not OK \n");
+
 	printf("Testing LoRa ...\n");
 	if(LORA_FWTest() == RET_OK)	 	printf("FW Test LoRa: OK \n");
 	else							printf("FW Test LoRa: Not OK \n");
@@ -199,7 +202,11 @@ eTestStatus Sys_Test(void)
 	printf("Testing GPS ...\n");
 	if(GPS_FWTest() == RET_OK)		printf("\nFW Test GPS: OK \n");
 	else							printf("FW Test GPS: Not OK \n");
-	SYS_test = 	EEPROM_test & ACL_test & LORA_test & GPS_test & ADC_test;
+
+	printf("Testing Flash ...\n");
+	if(Flash_FWTest() == RET_OK)	printf("\nFW Test Flash: OK \n");
+	else							printf("FW Test Flash: Not OK \n");
+	SYS_test = 	EEPROM_test & ACL_test & LORA_test & GPS_test & ADC_test & FLASH_test;
 
 	if(SYS_test == RET_OK)			printf("\nFW Test: OK \n");
 	else							printf("FW Test: Not OK \n");
@@ -833,6 +840,368 @@ eTestStatus GPS_FWTest(void)
 }
 
 /**************************************************************************************/
+
+/********************************* Flash FW Test **************************************/
+static int8_t SPI_TransmitReceive(void* TxData_P,void* RxData_P, uint32_t Length_U32)
+{
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
+	HAL_StatusTypeDef comm_status = HAL_SPI_TransmitReceive(&hspi1, TxData_P, RxData_P, Length_U32, 1000);
+	HAL_Delay(1);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
+	if (comm_status != HAL_OK)
+			return -1;
+		else
+			return 0;
+}
+
+static int8_t SPI_Transmit(void* TxData_P, uint32_t Length_U32)
+{
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
+	HAL_StatusTypeDef comm_status = HAL_SPI_Transmit(&hspi1, TxData_P, Length_U32, 1000);
+	HAL_Delay(1);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
+	if (comm_status != HAL_OK)
+		return -1;
+	else
+		return 0;
+}
+
+static int8_t SPI_Receive(void* RxData_P, uint32_t Length_U32)
+{
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
+	HAL_StatusTypeDef comm_status = HAL_SPI_Receive(&hspi1, RxData_P, Length_U32, 1000);
+	HAL_Delay(1);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
+	if (comm_status != HAL_OK)
+			return -1;
+		else
+			return 0;
+}
+
+static int8_t AT25SF321X_ReadStatusReg(uint8_t OpcodeReg, tStatusRegister* RegStatus)
+{
+	int8_t Result_U8 = -1;
+	uint8_t buff[2] = {OpcodeReg, 1};
+
+	Result_U8 = SPI_TransmitReceive(buff, buff, sizeof(buff));
+	memcpy(RegStatus, &buff[1], 1);
+
+	return Result_U8;
+}
+
+
+/* A block of 4 32 or 64 can be erase by call this function.
+ * Attention: WEL bit in status register 1 must be set
+ *
+ * @param OpCode: Ref CMD_BLOCK_ERASE_xx, in header file
+ *		  CheckProgress: pointer function callback to determine progress finished o not
+ *		  		   CheckProgress: return 1 in check progressing,
+ *		  		   				  0 complete stop polling
+ *
+ * @return  if executed successfully return 0 if done, 1 if on progeess, somthing else return error
+ */
+
+static int8_t PollingReadStatusRegister(uint8_t Opcode, tStatusRegister* Register, int8_t (*CheckProgress)(tStatusRegister* Register_TP), uint16_t Timeout)
+{
+	int8_t Result_S8 = -1;
+	tStatusRegister StatusRegister_T = {0};
+
+	do
+	{
+		Result_S8 = AT25SF321X_ReadStatusReg(Opcode, &StatusRegister_T);
+	}
+	while (!Result_S8 && CheckProgress(&StatusRegister_T) );
+
+	if (Register)
+		*Register = StatusRegister_T;
+
+	return Result_S8;
+}
+
+/**
+ * @Description
+ * This function allows 1 to 256B of data can be programmed/write in to previously erased memory location.
+ * If data is more than 256 byte, Only the last 256Byte is programmed . Read to to more detail.
+ * Ref Docs
+ *
+ * @param  Address in range 0 - 255
+ * @param  Data: pointer to memory data write
+ * @param  Length: of data write and return back number byte is programmed
+ * @return execute success return length of data programmed , else return error
+ */
+static int16_t AT25SF321X_WriteBytePage(tMemoryData MemoryData)
+{
+	int16_t  Result_S16 = -1;
+	uint16_t Length = 0;
+	uint8_t  Instruction[] = {
+								CMD_BYTEPAGE_PROGRAM,
+								MemoryData.Address_U32 >> 16,
+								MemoryData.Address_U32 >> 8,
+								MemoryData.Address_U32 >> 0,
+							 };
+
+	assert_param(!(MemoryData.Address_U32 & 0xFF));
+
+	if (((MemoryData.Address_U32 & (cBLOCK_256B - 1)) + MemoryData.Length_U32) > cBLOCK_256B)
+		Length = cBLOCK_256B - (MemoryData.Address_U32 & (cBLOCK_256B - 1));
+	else
+		Length = MemoryData.Length_U32;
+
+
+	uint8_t MemAllocated[sizeof(Instruction) + Length];
+	memcpy(MemAllocated, Instruction, sizeof(Instruction));
+	memcpy(MemAllocated + sizeof(Instruction), MemoryData.Data_U8P, Length);
+
+	Result_S16 = SPI_Transmit(MemAllocated, sizeof(Instruction) + Length);
+
+	int8_t CheckProgress(tStatusRegister* Status) { return Status->Reg1_T.ReadyFlag_B;};	//0 Device readly, stop polling
+
+	uint16_t T_bpp = (Length % cBLOCK_256B) ? ((Length / cBLOCK_256B) * T_pp) :	(T_bp1 + (T_bp2 * (Length - 1)));
+
+	//Recommended: The status register be polled to determine if device has finished execution
+	Result_S16 = PollingReadStatusRegister(OPC_STATUS_REG_1, NULL, &CheckProgress, T_bpp);
+
+	return Result_S16 ? Result_S16 : Length;
+}
+
+
+static int8_t AT25SF321X_ByteStandradRead(tMemoryData MemoryData)
+{
+	int8_t  Result_S8 = -1;
+	uint8_t Instruction[] = {
+								MOD_STANDARD_READ,
+								MemoryData.Address_U32 >> 16,
+								MemoryData.Address_U32 >> 8,
+								MemoryData.Address_U32 >> 0,
+#if MOD_STANDARD_READ == CMD_FAST_READ
+								0					// Dummy
+#endif
+							};
+
+	uint8_t MemAllocated[sizeof(Instruction) + MemoryData.Length_U32];
+	memcpy(MemAllocated, Instruction, sizeof(Instruction));
+	memset(MemAllocated + sizeof(Instruction), 0, MemoryData.Length_U32);
+
+	Result_S8 = SPI_TransmitReceive(MemAllocated, MemAllocated, sizeof(Instruction) + MemoryData.Length_U32);
+	memcpy(MemoryData.Data_U8P, MemAllocated + sizeof(Instruction), MemoryData.Length_U32);
+
+	return Result_S8;
+}
+
+int8_t AT25SF321X_Flash_Read(tMemoryData MemoryData)
+{
+	int16_t RResutl_S8 = -1;
+
+	if (!MemoryData.Data_U8P || !MemoryData.Length_U32)
+		return RResutl_S8;
+
+	RResutl_S8 = AT25SF321X_ByteStandradRead(MemoryData);
+
+	return RResutl_S8;
+}
+
+/* A block of 4 32 or 64 can be erase by call this function.
+ * Attention: WEL bit in status register 1 must be set
+ *
+ * @param OpCode: Ref CMD_BLOCK_ERASE_xx, in header file
+ *		  DevAddress_U32: flash address begin each block.
+ *
+ * @return  if executed successfully return 0 else return error
+ */
+
+static int8_t AT25SF3321x_EraseBlock(uint8_t Opcode, uint32_t DevAddress_U32, uint8_t NbBlock)
+{
+	uint8_t Result = -1;
+	uint16_t Timeout_U16;
+
+	if (!NbBlock)
+		return 0;
+
+	DevAddress_U32 &= (Opcode == CMD_BLOCK_ERASE_4K) ?  MASK_BLK_4K :
+									((Opcode == CMD_BLOCK_ERASE_32K) ? MASK_BLK_32K :
+											CMD_BLOCK_ERASE_64K);
+	Timeout_U16 = 	(Opcode == CMD_BLOCK_ERASE_4K) ?  T_blk4e :
+					((Opcode == CMD_BLOCK_ERASE_32K) ? T_blk32e :
+							T_blk64e);
+
+	while (NbBlock--)
+	{
+		Result = -1;
+
+		if (1 == AT25SF321X_WriteEnable())
+		{
+			uint8_t frame[] = { Opcode,
+								DevAddress_U32 >> 16,
+								DevAddress_U32 >> 8,
+								DevAddress_U32,
+				};
+
+			Result = SPI_Transmit(frame, sizeof(frame));
+
+			int8_t CheckProgress(tStatusRegister* Status) { return Status->Reg1_T.ReadyFlag_B;};		//0 Device readly, stop polling
+
+			Result = PollingReadStatusRegister(OPC_STATUS_REG_1, NULL, &CheckProgress, Timeout_U16);
+			//if not use polling check can be use delay with specific time, ref datasheet, page 49
+		}
+
+		if (Result)
+			break;
+	};
+
+	return Result;
+}
+
+static void AT25SF321X_Flash_Write(tMemoryData Input)
+{
+	int8_t Result_S8 = -1;
+	uint16_t index = 0;
+	uint16_t Length = 0;
+	uint8_t MemAllocated[cBLOCK_4KB];
+	tMemoryData RWData = {
+							.Address_U32 = Input.Address_U32 & MASK_BLK_4K,
+							.Data_U8P	 = MemAllocated,
+							.Length_U32	 = cBLOCK_4KB
+						 };
+
+	do
+	{
+		Result_S8 = -1;
+
+		index = Input.Address_U32 & (cBLOCK_4KB - 1);
+
+		if ((index + Input.Length_U32) > cBLOCK_4KB)
+			Length = cBLOCK_4KB - index;
+		else
+			Length = Input.Length_U32;
+
+		Result_S8 = AT25SF321X_Flash_Read(RWData);
+		memcpy(RWData.Data_U8P + index, Input.Data_U8P, Length);
+
+		Result_S8 = AT25SF3321x_EraseBlock(CMD_BLOCK_ERASE_4K, RWData.Address_U32, 1);
+		Result_S8 = AT25SF321X_Flash_WriteSector(RWData);
+
+		if (Result_S8 == 0)
+		{
+			Input.Address_U32 += Length;
+			Input.Data_U8P	  += Length;
+			Input.Length_U32  -= Length;
+
+			RWData.Address_U32 += cBLOCK_4KB;
+		}
+
+	} while ((Result_S8 == 0) && Input.Length_U32);
+
+}
+
+/**
+ * @Description: The _WriteEnable command sets WEL bit in Status register, to execute command as
+ * 	Byte/Page Program, Erase Block, etc...
+ * @return  if executed successfully return WEL else return error
+ */
+
+int8_t AT25SF321X_WriteEnable()
+{
+	int8_t Result_U8 = -1;
+	uint8_t Command = CMD_WRITE_EN;
+
+	tStatusRegister StatusReg1 = {0};
+
+	Result_U8 = SPI_Transmit(&Command, sizeof(Command));
+
+	if (Result_U8 == 0)
+	{
+		int8_t CheckProgress(tStatusRegister* Status) { return !Status->Reg1_T.WEL_B;};		//0 Device readly, stop polling
+
+		//Recommended: The status register be polled to determine if device has finished execution
+		Result_U8 = PollingReadStatusRegister(OPC_STATUS_REG_1, &StatusReg1, &CheckProgress, T_wrsr);
+	}
+
+	if (Result_U8 == 0)
+		return StatusReg1.Reg1_T.WEL_B;
+
+	return Result_U8;
+}
+
+/*
+ * Warning: The bit WEL on RgS1 must be set before call this function
+ */
+int8_t AT25SF321X_Flash_WriteSector(tMemoryData MemoryData)
+{
+	int16_t WResutl_S16 = -1;
+
+	if (!MemoryData.Data_U8P || !MemoryData.Length_U32)
+		return WResutl_S16;
+
+	do
+	{
+		WResutl_S16 = -1;
+
+		if (1 == AT25SF321X_WriteEnable())
+		{
+			WResutl_S16 = AT25SF321X_WriteBytePage(MemoryData);
+
+			if (WResutl_S16 > 0)
+			{
+				MemoryData.Address_U32 += WResutl_S16;
+				MemoryData.Data_U8P	   += WResutl_S16;
+				MemoryData.Length_U32  -= WResutl_S16;
+			}
+		}
+	} while ((WResutl_S16 > 0) && MemoryData.Length_U32);
+
+	return MemoryData.Length_U32 ? (int8_t)WResutl_S16 : 0;
+}
+
+int8_t AT25SF321X_ReadManufactureAndDeviceID(uint32_t* Value)
+{
+	int8_t Result_U8 = -1;
+	uint8_t Command[] = {
+			CMD_READ_MANUFACTURE_DEV_ID,
+			1,2,3								//Dummy
+	};
+
+	Result_U8 = SPI_TransmitReceive(Command, Value, sizeof(Command));
+	(*Value) >>= 8;
+
+	return Result_U8;
+}
+
+bool Flash_Initialize()
+{
+	bool ret_val=false;
+	HAL_GPIO_WritePin(FLASH_EN_GPIO_Port, FLASH_EN_Pin, GPIO_PIN_SET);
+
+	uint32_t TempData_U32 = {0x01234567};
+
+	tMemoryData TestData_T = {
+		.Address_U32 = 0,
+		.Data_U8P = (void*)&TempData_U32,
+		.Length_U32 = sizeof(TempData_U32),
+	};
+
+	AT25SF321X_Flash_Write(TestData_T);
+	TempData_U32 = 0x0;
+	AT25SF321X_Flash_Read(TestData_T);
+	uint32_t Flash_UID= 0;
+	AT25SF321X_ReadManufactureAndDeviceID(&Flash_UID);
+	ret_val = ((0x01234567 == TempData_U32) && (Flash_UID == MANUFACTURE_DEVICE_ID));
+	return ret_val;
+}
+
+
+
+eTestStatus Flash_FWTest(void)
+{
+	FLASH_test = RET_FAIL;
+	if (Flash_Initialize() == true)
+		FLASH_test = RET_OK;
+	return FLASH_test;
+}
+
+
+
+/**************************************************************************************/
+
 /********************************* ADC FW Test ************************************/
 extern DMA_HandleTypeDef hdma_adc1;
 uint32_t g_ui32vref=0;
