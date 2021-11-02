@@ -30,6 +30,7 @@
 #include "MMA865x.h"
 #include "L80.h"
 #include "AT25SF321x.h"
+#include "PCF8574A.h"
 #include "custom_stm.h"
 #include "custom_app.h"
 /* USER CODE END Includes */
@@ -52,7 +53,9 @@ typedef enum {
 	I2C_W  = 1,
 	I2C_R  = 2,
 	I2C_WR = 4,
-	I2C_WW = 8
+	I2C_WW = 8,
+	I2C_DR = 0x10,		/*Direct read*/
+	I2C_DW = 0x20		/*Direct write*/
 } eI2CMode;
 
 typedef struct {
@@ -159,6 +162,7 @@ eTestStatus GPS_FWTest(void);
 eTestStatus ADC_FWTest(void);
 eTestStatus BLE_FWTest(void);
 eTestStatus Flash_FWTest(void);
+eTestStatus EXT_IO_FWTest(void);
 /* Find the max ADC value in both ADC channels using DMA */
 eTestStatus ADC_ElecFenceTest(void);
 
@@ -200,15 +204,21 @@ eTestStatus Sys_Test(void)
 	#endif  /* End of ADC_TEST */
 
 	printf("Testing GPS ...\n");
-	if(GPS_FWTest() == RET_OK)		printf("\nFW Test GPS: OK \n");
+	if(GPS_FWTest() == RET_OK)		printf("FW Test GPS: OK \n");
 	else							printf("FW Test GPS: Not OK \n");
 
 	printf("Testing Flash ...\n");
-	if(Flash_FWTest() == RET_OK)	printf("\nFW Test Flash: OK \n");
+	if(Flash_FWTest() == RET_OK)	printf("FW Test Flash: OK \n");
 	else							printf("FW Test Flash: Not OK \n");
-	SYS_test = 	EEPROM_test & ACL_test & LORA_test & GPS_test & ADC_test & FLASH_test;
 
-	if(SYS_test == RET_OK)			printf("\nFW Test: OK \n");
+	printf("Testing extended I/O ... \n");
+	if(EXT_IO_FWTest() == RET_OK)	printf("FW Test Extended I/O: OK \n");
+	else							printf("FW Test Extended I/O: Not OK \n");
+
+	SYS_test = 	ACL_test & LORA_test & GPS_test &
+				ADC_test & FLASH_test & I_O_test;
+
+	if(SYS_test == RET_OK)			printf("FW Test: OK \n");
 	else							printf("FW Test: Not OK \n");
 
 	#if DEV_SLEEP
@@ -1198,9 +1208,68 @@ eTestStatus Flash_FWTest(void)
 	return FLASH_test;
 }
 
-
-
 /**************************************************************************************/
+
+/***************************** Extended I/O FW Test ***********************************/
+// At power on, the I/Os are high. The I/Os should be high before being used as inputs
+static uint8_t PCF8574A_PORT_DATA_T = 0x00;					//hold on the last state GPIO Pin
+
+static int8_t I2C_Read(uint32_t DevAddress,  uint8_t* Data_P, uint16_t Length)
+{
+	tI2CPackage I2CPackage;
+
+	I2CPackage.I2CMode_T		 = I2C_DR;
+	I2CPackage.DeviceAddress_U16 = DevAddress;
+	I2CPackage.Data_U8P			 = Data_P;
+	I2CPackage.Length_U16		 = Length;
+	I2C_Transferring(&I2CPackage);
+	return 0;
+}
+
+static int8_t I2C_Write(uint32_t DevAddress, uint8_t* Data_P, uint16_t Length)
+{
+	tI2CPackage I2CPackage;
+
+	I2CPackage.I2CMode_T		 = I2C_DW;
+	I2CPackage.DeviceAddress_U16 = DevAddress;
+	I2CPackage.Data_U8P			 = Data_P;
+	I2CPackage.Length_U16		 = Length;
+
+	I2C_Transferring(&I2CPackage);
+
+	return 0;
+}
+
+
+static int8_t PCF8574A_Write_Port()
+{
+	return I2C_Write(PCF8574A_ADR, &PCF8574A_PORT_DATA_T, sizeof(PCF8574A_PORT_DATA_T));
+}
+
+static int8_t PCF8574A_Read_Port()
+{
+	return I2C_Read(PCF8574A_ADR, &PCF8574A_PORT_DATA_T, sizeof(PCF8574A_PORT_DATA_T));
+}
+
+eTestStatus EXT_IO_FWTest(void)
+{
+	I_O_test = RET_FAIL;
+	#if EXT_IO_TEST
+	HAL_GPIO_WritePin(EXT_IO_EN_GPIO_Port, EXT_IO_EN_Pin, GPIO_PIN_SET);
+	HAL_Delay(1000);
+	PCF8574A_PORT_DATA_T = 00;
+	PCF8574A_Write_Port();
+	PCF8574A_PORT_DATA_T = 0xFA;
+	PCF8574A_Read_Port();
+	if(PCF8574A_PORT_DATA_T == 0x00)
+		I_O_test = RET_OK;
+	#endif  /* End of EXT_IO_TEST */
+	return I_O_test;
+}
+/**************************************************************************************/
+
+
+
 
 /********************************* ADC FW Test ************************************/
 extern DMA_HandleTypeDef hdma_adc1;
@@ -1782,6 +1851,22 @@ HAL_StatusTypeDef I2C_Transferring(tI2CPackage *I2CPackage_T)
 				I2CPackage_T->Register_16,
 				I2C_MEMADD_SIZE_8BIT, I2CPackage_T->Data_U8P,
 				I2CPackage_T->Length_U16, 0x1000U);
+	}
+	else if (I2CPackage_T->I2CMode_T == I2C_DW)
+	{
+		result = HAL_I2C_Master_Transmit(&hi2c1,
+										 I2CPackage_T->DeviceAddress_U16,
+										 I2CPackage_T->Data_U8P,
+										 I2CPackage_T->Length_U16,
+										 0x1000U);
+	}
+	else if (I2CPackage_T->I2CMode_T == I2C_DR)
+	{
+		result = HAL_I2C_Master_Receive(&hi2c1,
+										I2CPackage_T->DeviceAddress_U16,
+										I2CPackage_T->Data_U8P,
+										I2CPackage_T->Length_U16,
+										0x1000U);
 	}
 	if (result != HAL_OK) {
 		//ErrorHander(result);

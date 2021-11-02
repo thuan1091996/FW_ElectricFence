@@ -114,9 +114,11 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define FW_TEST								USED
 #define HW_SYSTEST							USED
 
+#define EXT_IO_TEST							USED
 #define EEPROM_TEST 						NOT_USED
+#define FLASH_TEST 							NOT_USED
 #define	ACL_TEST							USED
-#define GPS_TEST							USED
+#define GPS_TEST							NOT_USED
 
 #if ADC_ELECFENCE_TEST
 #define ADC_TEST							NOT_USED
