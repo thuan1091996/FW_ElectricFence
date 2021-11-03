@@ -184,7 +184,7 @@ void DebugProbeInit(void);
 eTestStatus Sys_Test(void)
 {
 	SYS_test = RET_FAIL;
-	printf("FW Test started... \n");
+
 	printf("Testing ACL ...\n");
 	if(ACL_FWTest() == RET_OK )		printf("FW Test ACL: OK \n");
 	else							printf("FW Test ACL: Not OK \n");
@@ -197,11 +197,9 @@ eTestStatus Sys_Test(void)
 	if(LORA_FWTest() == RET_OK)	 	printf("FW Test LoRa: OK \n");
 	else							printf("FW Test LoRa: Not OK \n");
 
-	#if (ADC_TEST && !(ADC_ELECFENCE_TEST) )
 	printf("Testing ADC ...\n");
 	if(ADC_FWTest() == RET_OK)	 	printf("FW Test ADC: OK \n");
 	else							printf("FW Test ADC: Not OK \n");
-	#endif  /* End of ADC_TEST */
 
 	printf("Testing GPS ...\n");
 	if(GPS_FWTest() == RET_OK)		printf("FW Test GPS: OK \n");
@@ -855,6 +853,7 @@ eTestStatus GPS_FWTest(void)
 static int8_t SPI_TransmitReceive(void* TxData_P,void* RxData_P, uint32_t Length_U32)
 {
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
+	HAL_Delay(1);
 	HAL_StatusTypeDef comm_status = HAL_SPI_TransmitReceive(&hspi1, TxData_P, RxData_P, Length_U32, 1000);
 	HAL_Delay(1);
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
@@ -867,6 +866,7 @@ static int8_t SPI_TransmitReceive(void* TxData_P,void* RxData_P, uint32_t Length
 static int8_t SPI_Transmit(void* TxData_P, uint32_t Length_U32)
 {
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
+	HAL_Delay(1);
 	HAL_StatusTypeDef comm_status = HAL_SPI_Transmit(&hspi1, TxData_P, Length_U32, 1000);
 	HAL_Delay(1);
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
@@ -879,6 +879,7 @@ static int8_t SPI_Transmit(void* TxData_P, uint32_t Length_U32)
 static int8_t SPI_Receive(void* RxData_P, uint32_t Length_U32)
 {
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_RESET);
+	HAL_Delay(1);
 	HAL_StatusTypeDef comm_status = HAL_SPI_Receive(&hspi1, RxData_P, Length_U32, 1000);
 	HAL_Delay(1);
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, GPIO_PIN_SET);
@@ -1179,7 +1180,6 @@ int8_t AT25SF321X_ReadManufactureAndDeviceID(uint32_t* Value)
 bool Flash_Initialize()
 {
 	bool ret_val=false;
-	HAL_GPIO_WritePin(FLASH_EN_GPIO_Port, FLASH_EN_Pin, GPIO_PIN_SET);
 
 	uint32_t TempData_U32 = {0x01234567};
 
@@ -1203,8 +1203,11 @@ bool Flash_Initialize()
 eTestStatus Flash_FWTest(void)
 {
 	FLASH_test = RET_FAIL;
+	#if FLASH_TEST
+	HAL_GPIO_WritePin(FLASH_EN_GPIO_Port, FLASH_EN_Pin, GPIO_PIN_SET);
 	if (Flash_Initialize() == true)
 		FLASH_test = RET_OK;
+	#endif  /* End of FLASH_TEST */
 	return FLASH_test;
 }
 
@@ -1750,6 +1753,8 @@ void EnterStopMode( void)
 
 	HAL_GPIO_DeInit(GPIOB, (GPIO_PIN_6 | GPIO_PIN_7) );
 	HAL_GPIO_DeInit(GPIOA, (GPIO_PIN_2 | GPIO_PIN_3) );
+
+	HAL_SPI_MspDeInit(&hspi1);
 
     GPIO_InitTypeDef GPIO_InitStruct = {0};
     GPIO_InitStruct.Pin = GPIO_PIN_15;

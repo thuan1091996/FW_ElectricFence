@@ -141,7 +141,7 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define DEBUG_CONSOLE						USED
 #define DEBUG_UART							USED
 #if (DEBUG_CONSOLE) && (!DEBUG_UART)
-#define DEBUG_ITM							USED
+#define DEBUG_ITM							NOT_USED
 #define DEBUG_UART							NOT_USED
 #endif
 
@@ -162,8 +162,8 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define OPA_SW_SET(STATE)					UNSED(STATE)	//TODO: Implement
 
 
-#define PORTA_OUTPUT_PINS					(EEPROM_EN_Pin| GPS_EN_Pin| EXT_IO_EN_Pin| RELAY_EN_Pin| OPA_SW_Pin)
-#define PORTB_OUTPUT_PINS					(VREF_EN_Pin| RAK_EN_Pin)
+#define PORTA_OUTPUT_PINS					(FLASH_EN_Pin| GPS_EN_Pin| EXT_IO_EN_Pin| RELAY_EN_Pin| OPA_SW_Pin)
+#define PORTB_OUTPUT_PINS					(VREF_EN_Pin | RAK_EN_Pin)
 
 
 
