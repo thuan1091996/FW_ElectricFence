@@ -46,7 +46,7 @@ typedef enum eTestStatus
 	RET_TIMEOUT
 }eTestStatus;
 eTestStatus SYS_test, EEPROM_test, ACL_test, LORA_test,
-GPS_test, ADC_test, BLE_test, BUTTON_test, ADCElecFence_Test, FLASH_test, I_O_test;
+GPS_test, ADC_test, BLE_test, BUTTON_test, ADCElecFence_Test, FLASH_test, EXT_IO_test;
 
 /* I2C Transfer */
 typedef enum {
@@ -214,7 +214,7 @@ eTestStatus Sys_Test(void)
 	else							printf("FW Test Extended I/O: Not OK \n");
 
 	SYS_test = 	ACL_test & LORA_test & GPS_test &
-				ADC_test & FLASH_test & I_O_test;
+				ADC_test & FLASH_test & EXT_IO_test;
 
 	if(SYS_test == RET_OK)			printf("FW Test: OK \n");
 	else							printf("FW Test: Not OK \n");
@@ -431,6 +431,8 @@ eTestStatus EEPROM_FWTest(void)
 /**************************************************************************************/
 /* ACL FIRMWARE TEST - Read raw data & Interrupt settings */
 
+static uint8_t CtrlReg4 = 0;
+static uint8_t CtrlReg5 = 0;
 int16_t g_rawX=0, g_rawY=0, g_rawZ=0;
 
 static void ACL_Read(uint8_t Register_U8, uint8_t* Data_U8P, uint8_t Length_U8)
@@ -564,6 +566,66 @@ static void ACL_ReadSource(void)
 	ACL_EnableInterrupt();
 }
 
+
+static void ACL_DisableIntRegister(uint8_t Source_U8)
+{
+	CtrlReg4 &= ~Source_U8;
+	ACL_RegisterSet(MMA865X_CTRL_REG4, CtrlReg4);
+
+	CtrlReg5 &= ~Source_U8;
+	ACL_RegisterSet(MMA865X_CTRL_REG5, CtrlReg5);
+}
+
+/**
+ * DisableLndPrlInt
+ *
+ * Disable landscape-portrait orientation interrupt
+ */
+static void ACL_DisableLndPrtInt()
+{
+	// Enter stand-by mode
+	ACL_Standby();
+	HAL_Delay(1);
+
+	ACL_DisableIntRegister(SRC_LNDPRT_MASK);
+	HAL_Delay(1);
+
+	// Disable Portrait/Ladscape orientation detection
+	ACL_RegisterSet(MMA865X_PL_CFG, 0);
+	HAL_Delay(1);
+
+	// Back to active mode
+	ACL_Active();
+}
+
+static void ACL_Sleeping(void* Def)
+{
+	if (ACL_RegisterGet(MMA865X_CTRL_REG4) & SRC_LNDPRT_MASK)
+	{
+	    // Disable Landscape/Portrait orientation interrupt, which is incompatible
+	    // With the current sleep mode
+		ACL_DisableLndPrtInt();
+	    HAL_Delay(1);
+	}
+
+	// Re-enter active mode first
+	ACL_Active();
+	HAL_Delay(2);
+
+	// Enter stand-by mode
+	ACL_Standby();
+	HAL_Delay(2);
+
+	ACL_RegisterSet(MMA865X_ASLP_COUNT, 1);
+	HAL_Delay(2);
+
+	ACL_RegisterSet(MMA865X_CTRL_REG2, 0x1C);
+	HAL_Delay(1);
+
+	// Back to active mode
+	ACL_Active();
+}
+
 eTestStatus ACL_FWTest(void)
 {
 	ACL_test = RET_FAIL;
@@ -584,8 +646,9 @@ eTestStatus ACL_FWTest(void)
 
 #if DISABLE_ACL_IRQ
 	ACL_Standby();	/* Prevent wake up from ACL */
+#else
+	ACL_Sleeping(NULL);
 #endif /*End of DISABLE_ACL_IRQ*/
-
 #else
 	printf("----- Skipped test ----- \n");
 #endif /*End of ACL_Test*/
@@ -736,6 +799,7 @@ eTestStatus LORA_FWTest(void)
 		return RET_FAIL;
 	}
 	printf("Sent up-link successfully\n");
+	LORA_test =  RET_OK;
 	#endif  /* End of LORAWAN_TEST */
 
 	#endif	/* End of DEBUG_AT_UART  */
@@ -798,9 +862,12 @@ bool GPS_Settings(void)
 {
 	uint8_t data_recv=0;
 	uint8_t gps_dataindex=0;
-	uint8_t max_retry = 10;
+	uint8_t max_retry = 3;
+	uint8_t expected_respond[]="PMTK001,314";
+	uint8_t respond_len=sizeof(expected_respond)-1;
 	for (int count = 0; count < max_retry; ++count)		//Retry in case unsuccessful communication
 	{
+		uint32_t cur_time = HAL_GetTick();
 		printf("Data sent to module GPS: \n");
 		if(HAL_UART_Transmit(&huart1, (uint8_t*)PMTK_SET_NMEA_OUTPUT_GGAONLY, strlen( PMTK_SET_NMEA_OUTPUT_GGAONLY), UART_TIMEOUT) == HAL_OK)
 		{
@@ -816,8 +883,10 @@ bool GPS_Settings(void)
 					}
 				}
 			}
-			while( (g_gps_datarecv[gps_dataindex-1] != '\r') && (g_gps_datarecv[gps_dataindex] != '\n') );
-			if (strstr( (const char*)g_gps_datarecv, (const char*)"PMTK001,314") != NULL)
+			while( (g_gps_datarecv[gps_dataindex-1] != '\r') && (g_gps_datarecv[gps_dataindex] != '\n')
+					&& (HAL_GetTick() <= cur_time + 3000) );
+
+			if ( memcmp(g_gps_datarecv, expected_respond, respond_len) == 0)
 			{
 				#if DEBUG_CONSOLE
 				printf("Data recv GPS:  %s \n", g_gps_datarecv);
@@ -827,6 +896,8 @@ bool GPS_Settings(void)
 				return true;
 			}
 		}
+		HAL_UART_DeInit(&huart1);
+		MX_USART1_UART_Init();
 	}
 	return false;
 }
@@ -1256,7 +1327,7 @@ static int8_t PCF8574A_Read_Port()
 
 eTestStatus EXT_IO_FWTest(void)
 {
-	I_O_test = RET_FAIL;
+	EXT_IO_test = RET_FAIL;
 	#if EXT_IO_TEST
 	HAL_GPIO_WritePin(EXT_IO_EN_GPIO_Port, EXT_IO_EN_Pin, GPIO_PIN_SET);
 	HAL_Delay(1000);
@@ -1265,9 +1336,9 @@ eTestStatus EXT_IO_FWTest(void)
 	PCF8574A_PORT_DATA_T = 0xFA;
 	PCF8574A_Read_Port();
 	if(PCF8574A_PORT_DATA_T == 0x00)
-		I_O_test = RET_OK;
+		EXT_IO_test = RET_OK;
 	#endif  /* End of EXT_IO_TEST */
-	return I_O_test;
+	return EXT_IO_test;
 }
 /**************************************************************************************/
 
@@ -1662,8 +1733,8 @@ eTestStatus ADC_ElecFenceTestInt(void)
 		cur_time = HAL_GetTick();
 	}
 	HAL_ADC_Stop_IT(&hadc1);
-	g_pos_max= __LL_ADC_CALC_DATA_TO_VOLTAGE(3000, g_max_eoc, ADC_RESOLUTION_12B);
-	g_neg_max= __LL_ADC_CALC_DATA_TO_VOLTAGE(3000, g_max_eos, ADC_RESOLUTION_12B);
+	g_pos_max= __LL_ADC_CALC_DATA_TO_VOLTAGE(g_ui32vref, g_max_eoc, ADC_RESOLUTION_12B);
+	g_neg_max= __LL_ADC_CALC_DATA_TO_VOLTAGE(g_ui32vref, g_max_eos, ADC_RESOLUTION_12B);
 
 	g_pos_max = (uint32_t) (g_pos_max * 5.318);
 	g_neg_max = (uint32_t) (g_neg_max *5.318);
@@ -1774,6 +1845,8 @@ void EnterStopMode( void)
 
 	// Resume SYSTICK Timer
 	HAL_ResumeTick();
+
+	HAL_UART_MspInit(&huart1);
 	printf("Waked up from stop 2 \n");
 }
 
@@ -1943,25 +2016,19 @@ int main(void)
 
 
 	#if HW_SYSTEST
+	printf("FW Test started... \n");
+	printf("Trigger SW2 to start the H/W test \n");
+
+	while(g_buttonpressed != true);
 	Sys_Test();
 	#endif  /* End of HW_SYSTEST */
 
-	/************** Electrical fence testing ***************/
-	#if HV_MAX_EACH_ADC_CHANNEL
-	printf("Electrical fence testing... \n");
-	while(1)
-	{
-		ADC_ElecFenceTestInt();
-	}
-	#endif  /* End of HV_MAX_EACH_ADC_CHANNEL */
-	/*******************************************************/
 	/* USER CODE END 2 */
 
 	/* Init code for STM32_WPAN */
 	#if BLE_TEST
 	APPE_Init();
 	g_testingble = true;
-	printf("Testing BLE function (including button test)\n");
 	#endif  /* End of BLE_TEST */
 
 	/* Infinite loop */
@@ -1971,9 +2038,15 @@ int main(void)
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
+		#if HV_MAX_EACH_ADC_CHANNEL
+		printf("Electrical fence testing... \n");
+		ADC_ElecFenceTestInt();
+		#endif  /* End of HV_MAX_EACH_ADC_CHANNEL */
+
 		#if BLE_TEST
+		printf("Initializing BLE ...\n");
 		UTIL_SEQ_Run(~0);
-		BLE_TestNotify();
+//		BLE_TestNotify();
 		#endif  /* End of BLE_TEST */
 
 		#if PLOT_HV_ADC
@@ -1984,7 +2057,6 @@ int main(void)
 		ADC_ElecFenceTest();
 		printf("HV %d (mV)\n", g_max_hv);
 		#endif  /* End of HV_MAX_OF_BOTH_ADCS */
-
 
 	}
 	/* USER CODE END 3 */
