@@ -99,8 +99,8 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 
 #define ADC_ELECFENCE_TEST					USED
 #define PLOT_HV_ADC							NOT_USED
-#define HV_MAX_OF_BOTH_ADCS					USED	/* Used DMA to find max ADC value of both channel */
-#define HV_MAX_EACH_ADC_CHANNEL				USED	/* Used interrupt to find max ADC value of each channel */
+#define HV_MAX_OF_BOTH_ADCS					NOT_USED	/* Used DMA to find max ADC value of both channel */
+#define HV_MAX_EACH_ADC_CHANNEL				1			/* Used interrupt to find max ADC value of each channel */
 
 
 #define ENDLESS_LOOP_ACL					NOT_USED
@@ -113,20 +113,16 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 
 #define FW_TEST								USED
 #define HW_SYSTEST							USED
+#define TRIGGER_BUTTON						NOT_USED
 
 #define EXT_IO_TEST							USED
 #define EEPROM_TEST 						NOT_USED
 #define FLASH_TEST 							USED
 #define	ACL_TEST							USED
-#define GPS_TEST							USED
-
-#if ADC_ELECFENCE_TEST
-#define ADC_TEST							NOT_USED
-#else
+#define GPS_TEST							NOT_USED
 #define ADC_TEST							USED
-#endif  /* End of ADC_ELECFENCE_TEST */
 
-#define LORA_TEST							USED
+#define LORA_TEST							NOT_USED
 #define TEST_SLEEPLORA						NOT_USED
 #if LORA_TEST
 #define LORAWAN_TEST						USED
@@ -135,7 +131,7 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #endif  /* End of LORA_TEST */
 
 #define BLE_TEST							NOT_USED
-#define	DISABLE_ACL_IRQ						NOT_USED
+#define	DISABLE_ACL_IRQ						USED
 
 
 #define DEBUG_CONSOLE						USED
@@ -145,7 +141,7 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define DEBUG_UART							NOT_USED
 #endif
 
-#define DEV_SLEEP							USED
+#define DEV_SLEEP							NOT_USED
 #define DEBUG_LPOWER						NOT_USED
 
 #define PROBE1								GPIO_PIN_11

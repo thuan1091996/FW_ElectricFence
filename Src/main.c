@@ -213,8 +213,19 @@ eTestStatus Sys_Test(void)
 	if(EXT_IO_FWTest() == RET_OK)	printf("FW Test Extended I/O: OK \n");
 	else							printf("FW Test Extended I/O: Not OK \n");
 
-	SYS_test = 	ACL_test & LORA_test & GPS_test &
-				ADC_test & FLASH_test & EXT_IO_test;
+	/* Test result |	!Perform		 == RESULT	(1 if test pass & not skip test)
+	 * 		0				0				0
+	 * 		0				1				1
+	 * 		1				0				1
+	 * 		1				1				1*/
+
+
+	SYS_test = ((ACL_test 		| 	(!ACL_TEST)		)	&
+				(LORA_test 		| 	(!LORA_TEST)	)	&
+				(GPS_test  		| 	(!GPS_TEST)		)	&
+				(ADC_test 		| 	(!ADC_TEST)		)	&
+				(FLASH_test 	| 	(!FLASH_TEST)	)   &
+				(EXT_IO_test 	|	(!EXT_IO_TEST)	));
 
 	if(SYS_test == RET_OK)			printf("FW Test: OK \n");
 	else							printf("FW Test: Not OK \n");
@@ -223,7 +234,6 @@ eTestStatus Sys_Test(void)
 	EnterStopMode();
 	HAL_Delay(100);
 	ButtonsHandler();
-
 	if(g_acl_interrupt == true)
 	{
 		printf("ACL detected motion \n");
@@ -1592,7 +1602,6 @@ void ADC_ElecFenceInit()
 /* This function configure the MCU to continously read 2 ADC channels without doing anything else */
 eTestStatus HV_Monitor(void)
 {
-	HAL_GPIO_WritePin(VREF_EN_GPIO_Port, VREF_EN_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(OPA_SW_GPIO_Port, OPA_SW_Pin, GPIO_PIN_SET);
 	ADC_HVInit();
 	HAL_Delay(100);
@@ -1617,7 +1626,7 @@ eTestStatus HV_Monitor(void)
 eTestStatus ADC_FWTest(void)
 {
 	ADC_test = RET_FAIL;
-	#ifdef ADC_TEST
+	#if ADC_TEST
 	HAL_GPIO_WritePin(VREF_EN_GPIO_Port, VREF_EN_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(RELAY_EN_GPIO_Port, RELAY_EN_Pin, GPIO_PIN_SET);
 	HAL_Delay(500);			/* Wait for stable */
@@ -1720,7 +1729,6 @@ eTestStatus ADC_ElecFenceTestInt(void)
 	static bool IsReady = false;
 	if(IsReady == false)
 	{
-		HAL_GPIO_WritePin(VREF_EN_GPIO_Port, VREF_EN_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(OPA_SW_GPIO_Port, OPA_SW_Pin, GPIO_PIN_SET);
 		ADC_ElecFenceInit();
 		IsReady = true;
@@ -2003,7 +2011,7 @@ int main(void)
 	MX_TIM16_Init();
 	MX_ADC1_Init();
 	MX_SPI1_Init();
-
+	ADC_FWTest(); /* Update VREF, VBAT */
   /* USER CODE BEGIN 2 */
 	#if DEBUG_ITM
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -2015,36 +2023,37 @@ int main(void)
 	#endif  /* End of DEBUG_ITM */
 
 
+	#if TRIGGER_BUTTON
+	printf("Trigger SW2 to start the H/W test \n");
+	while(g_buttonpressed != true);
+	#endif  /* End of TRIGGER_BUTTON */
+
 	#if HW_SYSTEST
 	printf("FW Test started... \n");
-	printf("Trigger SW2 to start the H/W test \n");
-
-	while(g_buttonpressed != true);
 	Sys_Test();
 	#endif  /* End of HW_SYSTEST */
-
 	/* USER CODE END 2 */
 
 	/* Init code for STM32_WPAN */
 	#if BLE_TEST
-	APPE_Init();
 	g_testingble = true;
+	printf("Initializing BLE ...\n");
+	APPE_Init();
 	#endif  /* End of BLE_TEST */
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
+	printf("Electrical fence testing... \n");
 	while (1)
 	{
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
 		#if HV_MAX_EACH_ADC_CHANNEL
-		printf("Electrical fence testing... \n");
 		ADC_ElecFenceTestInt();
 		#endif  /* End of HV_MAX_EACH_ADC_CHANNEL */
 
 		#if BLE_TEST
-		printf("Initializing BLE ...\n");
 		UTIL_SEQ_Run(~0);
 //		BLE_TestNotify();
 		#endif  /* End of BLE_TEST */
