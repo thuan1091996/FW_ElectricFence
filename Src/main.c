@@ -46,7 +46,27 @@ typedef enum eTestStatus
 	RET_TIMEOUT
 }eTestStatus;
 eTestStatus SYS_test, EEPROM_test, ACL_test, LORA_test,
-GPS_test, ADC_test, BLE_test, BUTTON_test, ADCElecFence_Test, FLASH_test, EXT_IO_test;
+			GPS_test, ADC_test, BLE_test, BUTTON_test, ADCElecFence_Test, FLASH_test, EXT_IO_test;
+
+enum Device_pos {ACL_pos=0, EEPROM_pos, ADC_pos, GPS_pos, LORA_pos, EXT_IO_pos, FLASH_pos, MAX_pos};
+typedef enum Device_pos eDevicePos;
+
+typedef struct
+{
+	eTestStatus *p_result;
+	char		*p_name;
+	eDevicePos	pos;
+}Test_result_t;
+
+Test_result_t el_fence_test[] = {
+		{.p_result =&ACL_test, 		.p_name="ACL",    .pos = ACL_pos},
+		{.p_result =&EEPROM_test, 	.p_name="EEPROM", .pos = EEPROM_pos},
+		{.p_result =&GPS_test, 		.p_name="GPS",    .pos = GPS_pos},
+		{.p_result =&LORA_test, 	.p_name="LORA",    .pos = LORA_pos},
+		{.p_result =&EXT_IO_test, 	.p_name="EXT_IO",   .pos = EXT_IO_pos},
+		{.p_result =&FLASH_test, 	.p_name="FLASH", .pos = FLASH_pos},
+};
+
 
 /* I2C Transfer */
 typedef enum {
@@ -185,6 +205,10 @@ eTestStatus Sys_Test(void)
 {
 	SYS_test = RET_FAIL;
 
+	printf("Testing extended I/O ... \n");
+	if(EXT_IO_FWTest() == RET_OK)	printf("FW Test Extended I/O: OK \n");
+	else							printf("FW Test Extended I/O: Not OK \n");
+
 	printf("Testing ACL ...\n");
 	if(ACL_FWTest() == RET_OK )		printf("FW Test ACL: OK \n");
 	else							printf("FW Test ACL: Not OK \n");
@@ -209,10 +233,6 @@ eTestStatus Sys_Test(void)
 	if(Flash_FWTest() == RET_OK)	printf("FW Test Flash: OK \n");
 	else							printf("FW Test Flash: Not OK \n");
 
-	printf("Testing extended I/O ... \n");
-	if(EXT_IO_FWTest() == RET_OK)	printf("FW Test Extended I/O: OK \n");
-	else							printf("FW Test Extended I/O: Not OK \n");
-
 	/* Test result |	!Perform		 == RESULT	(1 if test pass & not skip test)
 	 * 		0				0				0
 	 * 		0				1				1
@@ -227,9 +247,14 @@ eTestStatus Sys_Test(void)
 				(FLASH_test 	| 	(!FLASH_TEST)	)   &
 				(EXT_IO_test 	|	(!EXT_IO_TEST)	));
 
+
 	if(SYS_test == RET_OK)			printf("FW Test: OK \n");
 	else							printf("FW Test: Not OK \n");
 
+	for(uint8_t idx=0; idx<MAX_pos-1; idx++)
+	{
+		printf("%s: %d \r\n", (el_fence_test[idx].p_name), *(el_fence_test[idx].p_result));
+	}
 	#if DEV_SLEEP
 	EnterStopMode();
 	HAL_Delay(100);
@@ -800,6 +825,7 @@ eTestStatus LORA_FWTest(void)
 		printf("Join failed \n");
 		return RET_FAIL;
 	}
+	LoRa_curState = DEVICE_STATE_JOINED;
 	printf("Joined successfully \n");
 
 	printf("Sending uplink\n");
@@ -1342,6 +1368,7 @@ eTestStatus EXT_IO_FWTest(void)
 	HAL_GPIO_WritePin(EXT_IO_EN_GPIO_Port, EXT_IO_EN_Pin, GPIO_PIN_SET);
 	HAL_Delay(1000);
 	PCF8574A_PORT_DATA_T = 00;
+	PCF8574A_PORT_DATA_T |= (1<<6);
 	PCF8574A_Write_Port();
 	PCF8574A_PORT_DATA_T = 0xFA;
 	PCF8574A_Read_Port();
