@@ -251,10 +251,12 @@ eTestStatus Sys_Test(void)
 	if(SYS_test == RET_OK)			printf("FW Test: OK \n");
 	else							printf("FW Test: Not OK \n");
 
+	printf("----------------Test results ----------------\r\n");
 	for(uint8_t idx=0; idx<MAX_pos-1; idx++)
 	{
 		printf("%s: %d \r\n", (el_fence_test[idx].p_name), *(el_fence_test[idx].p_result));
 	}
+	printf("---------------------------------------------\r\n");
 	#if DEV_SLEEP
 	EnterStopMode();
 	HAL_Delay(100);
@@ -1367,9 +1369,19 @@ eTestStatus EXT_IO_FWTest(void)
 	#if EXT_IO_TEST
 	HAL_GPIO_WritePin(EXT_IO_EN_GPIO_Port, EXT_IO_EN_Pin, GPIO_PIN_SET);
 	HAL_Delay(1000);
-	PCF8574A_PORT_DATA_T = 00;
-	PCF8574A_PORT_DATA_T |= (1<<6);
+	for(uint8_t count=0; count<3; count++)
+	{
+		PCF8574A_PORT_DATA_T |= (1<<count);
+		PCF8574A_Write_Port();
+		HAL_Delay(1000);
+
+		PCF8574A_PORT_DATA_T = 0;
+		PCF8574A_Write_Port();
+		HAL_Delay(1000);
+	}
+	PCF8574A_PORT_DATA_T = 0;
 	PCF8574A_Write_Port();
+
 	PCF8574A_PORT_DATA_T = 0xFA;
 	PCF8574A_Read_Port();
 	if(PCF8574A_PORT_DATA_T == 0x00)
