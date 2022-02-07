@@ -31,6 +31,7 @@
 #include "L80.h"
 #include "AT25SF321x.h"
 #include "PCF8574A.h"
+#include "MC36xx.h"
 #include "custom_stm.h"
 #include "custom_app.h"
 /* USER CODE END Includes */
@@ -210,8 +211,16 @@ eTestStatus Sys_Test(void)
 	else							printf("FW Test Extended I/O: Not OK \n");
 
 	printf("Testing ACL ...\n");
+
+	#if 1
+	if(MC36xx_Init() == RET_OK )	printf("FW Test ACL: OK \n");
+	#else
 	if(ACL_FWTest() == RET_OK )		printf("FW Test ACL: OK \n");
+	#endif  /* End of 0 */
 	else							printf("FW Test ACL: Not OK \n");
+
+
+
 
 	printf("Testing EEPROM ...\n");
 	if(EEPROM_FWTest() == RET_OK )	printf("FW Test EEPROM: OK \n");
@@ -2041,6 +2050,13 @@ int main(void)
 
 	/* Initialize all configured peripherals */
 	MX_GPIO_Init();
+
+	/* Onboard LED */
+	GPIOA->ODR |= LED_D2_Pin;
+	HAL_Delay(1000);
+	GPIOA->ODR |= LED_D3_Pin;
+	HAL_Delay(1000);
+
 	MX_DMA_Init();
 	MX_USART1_UART_Init();
 	MX_RF_Init();
@@ -2050,7 +2066,7 @@ int main(void)
 	MX_TIM16_Init();
 	MX_ADC1_Init();
 	MX_SPI1_Init();
-	ADC_FWTest(); /* Update VREF, VBAT */
+//	ADC_FWTest(); /* Update VREF, VBAT */
   /* USER CODE BEGIN 2 */
 	#if DEBUG_ITM
 	GPIO_InitTypeDef GPIO_InitStruct = {0};

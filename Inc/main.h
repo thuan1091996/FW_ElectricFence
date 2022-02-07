@@ -92,6 +92,12 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define V12V_CHANNEL_GPIO_Port GPIOA
 #define NTC_CHANNEL_Pin GPIO_PIN_8
 #define NTC_CHANNEL_GPIO_Port GPIOA
+
+#define LED_D2_GPIO_Port GPIOA
+#define LED_D3_GPIO_Port GPIOA
+
+#define LED_D2_Pin 	GPIO_PIN_7
+#define LED_D3_Pin 	GPIO_PIN_8
 /* USER CODE BEGIN Private defines */
 #define USED								1
 #define NOT_USED							0
@@ -119,10 +125,10 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define EEPROM_TEST 						NOT_USED
 #define FLASH_TEST 							USED
 #define	ACL_TEST							USED
-#define GPS_TEST							NOT_USED
+#define GPS_TEST							USED
 #define ADC_TEST							USED
 
-#define LORA_TEST							NOT_USED
+#define LORA_TEST							USED
 #define TEST_SLEEPLORA						NOT_USED
 #if LORA_TEST
 #define LORAWAN_TEST						USED
@@ -158,7 +164,7 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define OPA_SW_SET(STATE)					UNSED(STATE)	//TODO: Implement
 
 
-#define PORTA_OUTPUT_PINS					(FLASH_EN_Pin| GPS_EN_Pin| EXT_IO_EN_Pin| RELAY_EN_Pin| OPA_SW_Pin)
+#define PORTA_OUTPUT_PINS					(FLASH_EN_Pin| GPS_EN_Pin| EXT_IO_EN_Pin|  LED_D2_Pin| LED_D3_Pin| RELAY_EN_Pin| OPA_SW_Pin)
 #define PORTB_OUTPUT_PINS					(VREF_EN_Pin | RAK_EN_Pin)
 
 
