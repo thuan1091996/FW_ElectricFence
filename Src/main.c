@@ -49,7 +49,7 @@ typedef enum eTestStatus
 eTestStatus SYS_test, EEPROM_test, ACL_test, LORA_test,
 			GPS_test, ADC_test, BLE_test, BUTTON_test, ADCElecFence_Test, FLASH_test, EXT_IO_test;
 
-enum Device_pos {ACL_pos=0, EEPROM_pos, ADC_pos, GPS_pos, LORA_pos, EXT_IO_pos, FLASH_pos, MAX_pos};
+enum Device_pos {ACL_pos=0, ADC_pos, GPS_pos, LORA_pos, EXT_IO_pos, FLASH_pos, MAX_pos};
 typedef enum Device_pos eDevicePos;
 
 typedef struct
@@ -61,7 +61,6 @@ typedef struct
 
 Test_result_t el_fence_test[] = {
 		{.p_result =&ACL_test, 		.p_name="ACL",    .pos = ACL_pos},
-		{.p_result =&EEPROM_test, 	.p_name="EEPROM", .pos = EEPROM_pos},
 		{.p_result =&GPS_test, 		.p_name="GPS",    .pos = GPS_pos},
 		{.p_result =&LORA_test, 	.p_name="LORA",    .pos = LORA_pos},
 		{.p_result =&EXT_IO_test, 	.p_name="EXT_IO",   .pos = EXT_IO_pos},
@@ -213,7 +212,7 @@ eTestStatus Sys_Test(void)
 	printf("Testing ACL ...\n");
 
 	#if 1
-	if(MC36xx_Init() == RET_OK )	printf("FW Test ACL: OK \n");
+	if(MC36xx_Init() == RET_OK )	{ ACL_test = RET_OK; printf("FW Test ACL: OK \n");}
 	#else
 	if(ACL_FWTest() == RET_OK )		printf("FW Test ACL: OK \n");
 	#endif  /* End of 0 */
