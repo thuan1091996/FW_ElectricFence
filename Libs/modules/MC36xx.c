@@ -82,11 +82,10 @@ MC3635_status_t  MC3635_EnableFIFO ( MC3635_fifo_c_fifo_en_t FIFO_Enable );
  */
 bool MC36xx_Init()
 {
+	bool retval=false;
 	if (!HAL_I2C_IsDeviceReady(&hi2c1, MC3635_ADDRESS_LOW<<1, 3, 100))
 	{
-
-
-	//Place MMA865X in standby mode
+		//Place MMA865X in standby mode
 		Standby();
 		//HAL_Delay(10);
 
@@ -106,7 +105,6 @@ bool MC36xx_Init()
 		GetAndClearSourceINT(&int_source);
 
 		MC3635_Setting();
-
 		EnableInterrupt();
 
 		Active();
@@ -116,10 +114,11 @@ bool MC36xx_Init()
 		GetAndClearSourceINT(&int_source);
 		if(int_source == 0x04)
 		{
-			return true;
+			retval = true;
 		}
+
 	}
-	return false;
+	return retval;
 }
 
 /**

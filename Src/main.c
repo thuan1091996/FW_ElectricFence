@@ -34,6 +34,8 @@
 #include "MC36xx.h"
 #include "custom_stm.h"
 #include "custom_app.h"
+#include "st25dv.h"
+#include "stdio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,9 +49,9 @@ typedef enum eTestStatus
 	RET_TIMEOUT
 }eTestStatus;
 eTestStatus SYS_test, EEPROM_test, ACL_test, LORA_test,
-			GPS_test, ADC_test, BLE_test, BUTTON_test, ADCElecFence_Test, FLASH_test, EXT_IO_test;
+			GPS_test, ADC_test, BLE_test, BUTTON_test, ADCElecFence_Test, FLASH_test, EXT_IO_test, NFC_test;
 
-enum Device_pos {ACL_pos=0, ADC_pos, GPS_pos, LORA_pos, EXT_IO_pos, FLASH_pos, MAX_pos};
+enum Device_pos {ACL_pos=0, ADC_pos, GPS_pos, LORA_pos, EXT_IO_pos, FLASH_pos, NFC_pos, MAX_pos};
 typedef enum Device_pos eDevicePos;
 
 typedef struct
@@ -60,11 +62,12 @@ typedef struct
 }Test_result_t;
 
 Test_result_t el_fence_test[] = {
-		{.p_result =&ACL_test, 		.p_name="ACL",    .pos = ACL_pos},
-		{.p_result =&GPS_test, 		.p_name="GPS",    .pos = GPS_pos},
-		{.p_result =&LORA_test, 	.p_name="LORA",    .pos = LORA_pos},
-		{.p_result =&EXT_IO_test, 	.p_name="EXT_IO",   .pos = EXT_IO_pos},
-		{.p_result =&FLASH_test, 	.p_name="FLASH", .pos = FLASH_pos},
+		{.p_result =&ACL_test, 		.p_name="ACL",		.pos = ACL_pos},
+		{.p_result =&GPS_test, 		.p_name="GPS",		.pos = GPS_pos},
+		{.p_result =&LORA_test, 	.p_name="LORA",		.pos = LORA_pos},
+		{.p_result =&EXT_IO_test, 	.p_name="EXT_IO",	.pos = EXT_IO_pos},
+		{.p_result =&FLASH_test, 	.p_name="FLASH", 	.pos = FLASH_pos},
+		{.p_result =&NFC_test,	 	.p_name="NFC", 		.pos = NFC_pos},
 };
 
 
@@ -149,6 +152,11 @@ PUTCHAR_PROTOTYPE
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+bool  g_nfc_init = false;
+volatile bool g_button1pressed=false;
+volatile bool g_button2pressed=false;
+volatile uint16_t g_countbuttonpress=0;
+volatile bool g_nfc_interrupt=false;
 volatile bool g_acl_interrupt=false;
 volatile bool g_button_interrupt=false;
 volatile bool g_rak4200_newdata=false;
@@ -183,6 +191,7 @@ eTestStatus ADC_FWTest(void);
 eTestStatus BLE_FWTest(void);
 eTestStatus Flash_FWTest(void);
 eTestStatus EXT_IO_FWTest(void);
+eTestStatus NFC_FWTest(void);
 /* Find the max ADC value in both ADC channels using DMA */
 eTestStatus ADC_ElecFenceTest(void);
 
@@ -210,16 +219,21 @@ eTestStatus Sys_Test(void)
 	else							printf("FW Test Extended I/O: Not OK \n");
 
 	printf("Testing ACL ...\n");
-
 	#if 1
+	HAL_NVIC_DisableIRQ(EXTI0_IRQn);
 	if(MC36xx_Init() == RET_OK )	{ ACL_test = RET_OK; printf("FW Test ACL: OK \n");}
 	#else
 	if(ACL_FWTest() == RET_OK )		printf("FW Test ACL: OK \n");
 	#endif  /* End of 0 */
 	else							printf("FW Test ACL: Not OK \n");
 
-
-
+	if( HAL_NVIC_GetPendingIRQ(EXTI0_IRQn) == true)
+	{
+		HAL_NVIC_ClearPendingIRQ(EXTI0_IRQn);
+		NVIC->ICPR[0] |= (1<<6);
+		__HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_0);
+	}
+	HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 
 	printf("Testing EEPROM ...\n");
 	if(EEPROM_FWTest() == RET_OK )	printf("FW Test EEPROM: OK \n");
@@ -240,6 +254,11 @@ eTestStatus Sys_Test(void)
 	printf("Testing Flash ...\n");
 	if(Flash_FWTest() == RET_OK)	printf("FW Test Flash: OK \n");
 	else							printf("FW Test Flash: Not OK \n");
+
+	printf("Testing NFC ...\n");
+	if(NFC_FWTest() == RET_OK)		printf("FW Test NFC: OK \n");
+	else							printf("FW Test NFC: Not OK \n");
+
 
 	/* Test result |	!Perform		 == RESULT	(1 if test pass & not skip test)
 	 * 		0				0				0
@@ -267,6 +286,8 @@ eTestStatus Sys_Test(void)
 	printf("---------------------------------------------\r\n");
 	#if DEV_SLEEP
 	EnterStopMode();
+	HAL_UART_MspInit(&huart1);
+	printf("Waked up from stop 2 \n");
 	HAL_Delay(100);
 	ButtonsHandler();
 	if(g_acl_interrupt == true)
@@ -274,9 +295,19 @@ eTestStatus Sys_Test(void)
 		printf("ACL detected motion \n");
 		g_acl_interrupt = false;
 	}
-	else if (g_button_interrupt == true)
+	else if (g_button1pressed == true)
 	{
-		printf("Wake up by button \n");
+		printf("Wake up by SW1 \n");
+	}
+
+	else if (g_button2pressed == true)
+	{
+		printf("Wake up by SW2 \n");
+	}
+
+	else if(g_nfc_interrupt == true)
+	{
+		printf("Wake up by NFC \n");
 	}
 	else
 	{
@@ -1379,16 +1410,16 @@ eTestStatus EXT_IO_FWTest(void)
 	HAL_Delay(1000);
 	for(uint8_t count=0; count<3; count++)
 	{
-		PCF8574A_PORT_DATA_T |= (1<<count);
-		PCF8574A_Write_Port();
-		HAL_Delay(1000);
+			PCF8574A_PORT_DATA_T |= (1<<count);
+			PCF8574A_Write_Port();
+			HAL_Delay(1000);
 
+			PCF8574A_PORT_DATA_T = 0;
+			PCF8574A_Write_Port();
+			HAL_Delay(1000);
+		}
 		PCF8574A_PORT_DATA_T = 0;
 		PCF8574A_Write_Port();
-		HAL_Delay(1000);
-	}
-	PCF8574A_PORT_DATA_T = 0;
-	PCF8574A_Write_Port();
 
 	PCF8574A_PORT_DATA_T = 0xFA;
 	PCF8574A_Read_Port();
@@ -1819,12 +1850,34 @@ void BLE_TestNotify(void)
 	}
 }
 
+/********************************---NFC TEST---****************************************/
+eTestStatus NFC_FWTest(void)
+{
+	NFC_test = RET_FAIL;
+	GPIOB->ODR |= (0X02);
+	if (NFCTAG_OK == CUSTOM_NFCTAG_Init(0) )
+	{
+		CUSTOM_NFCTAG_WriteData(0, (uint8_t * const)&g_ui8dataWrite, 0, LENGTH);
+		memset(g_ui8dataRecv, 1, LENGTH);
+		CUSTOM_NFCTAG_ReadData(0, (uint8_t * const)&g_ui8dataRecv, 0, LENGTH);
+		if( memcmp((char*)g_ui8dataRecv, (char*)g_ui8dataWrite, LENGTH) == 0) //Test read/write NFC
+		{
+			g_nfc_init = true;
+			NFC_test = RET_OK;
+			uint8_t dummy_clear_int=0;
+			CUSTOM_NFCTAG_ReadITSTStatus_Dyn(0, &dummy_clear_int);
+			CUSTOM_NFCTAG_SetGPO_en_Dyn(0);
+		}
+	}
+//	GPIOB->ODR &= ~(0X02);
+	return	NFC_test;
+}
+
 /**************************************************************************************/
-volatile bool g_buttonpressed=false;
-volatile uint16_t g_countbuttonpress=0;
+
 void ButtonsHandler(void)
 {
-	if (g_buttonpressed == true)
+	if (g_button2pressed == true)
 	{
 		if(HAL_GPIO_ReadPin(SW_DIS_GPIO_Port, SW_DIS_Pin) == GPIO_PIN_SET) //Release
 		{
@@ -1837,7 +1890,7 @@ void ButtonsHandler(void)
 				g_button_interrupt = true;
 				printf("Button pressed \n");
 			}
-			g_buttonpressed = false;
+			g_button2pressed = false;
 			g_countbuttonpress = 0;
 		}
 	}
@@ -1901,8 +1954,6 @@ void EnterStopMode( void)
 	// Resume SYSTICK Timer
 	HAL_ResumeTick();
 
-	HAL_UART_MspInit(&huart1);
-	printf("Waked up from stop 2 \n");
 }
 
 void HAL_ADC_ErrorCallback(ADC_HandleTypeDef *hadc)
@@ -1965,13 +2016,21 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		ACL_EnableInterrupt();
 		break;
 
-	case SW_DIS_Pin:
-		g_buttonpressed = true;
-		if(g_testingble == true)
-		{
-			UTIL_SEQ_SetTask(1<<CFG_TASK_SW1_BUTTON_PUSHED_ID, CFG_SCH_PRIO_0);
-		}
+		case SW_DIS_Pin:
+			g_button2pressed = true;
+			printf("SW2 pressed \n");
+			if(g_testingble == true)
+			{
+				UTIL_SEQ_SetTask(1<<CFG_TASK_SW1_BUTTON_PUSHED_ID, CFG_SCH_PRIO_0);
+			}
 		break;
+
+		case GPIO_PIN_4:
+		{
+			printf("SW1 pressed \n");
+			g_button1pressed=true;
+
+		}
 	}
 }
 
@@ -2052,9 +2111,9 @@ int main(void)
 
 	/* Onboard LED */
 	GPIOA->ODR |= LED_D2_Pin;
-	HAL_Delay(1000);
+	HAL_Delay(500);
 	GPIOA->ODR |= LED_D3_Pin;
-	HAL_Delay(1000);
+	HAL_Delay(500);
 
 	MX_DMA_Init();
 	MX_USART1_UART_Init();
@@ -2065,35 +2124,34 @@ int main(void)
 	MX_TIM16_Init();
 	MX_ADC1_Init();
 	MX_SPI1_Init();
-//	ADC_FWTest(); /* Update VREF, VBAT */
-  /* USER CODE BEGIN 2 */
-	#if DEBUG_ITM
+	/* USER CODE BEGIN 2 */
+#if DEBUG_ITM
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
 	GPIO_InitStruct.Pin = GPIO_PIN_3;
 	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-	#endif  /* End of DEBUG_ITM */
+#endif  /* End of DEBUG_ITM */
 
 
-	#if TRIGGER_BUTTON
+#if TRIGGER_BUTTON
 	printf("Trigger SW2 to start the H/W test \n");
-	while(g_buttonpressed != true);
-	#endif  /* End of TRIGGER_BUTTON */
+	while(g_button2pressed != true);
+#endif  /* End of TRIGGER_BUTTON */
 
-	#if HW_SYSTEST
+#if HW_SYSTEST
 	printf("FW Test started... \n");
 	Sys_Test();
-	#endif  /* End of HW_SYSTEST */
+#endif  /* End of HW_SYSTEST */
 	/* USER CODE END 2 */
 
 	/* Init code for STM32_WPAN */
-	#if BLE_TEST
+#if BLE_TEST
 	g_testingble = true;
 	printf("Initializing BLE ...\n");
 	APPE_Init();
-	#endif  /* End of BLE_TEST */
+#endif  /* End of BLE_TEST */
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
@@ -2103,23 +2161,23 @@ int main(void)
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
-		#if HV_MAX_EACH_ADC_CHANNEL
+#if !HV_MAX_EACH_ADC_CHANNEL
 		ADC_ElecFenceTestInt();
-		#endif  /* End of HV_MAX_EACH_ADC_CHANNEL */
+#endif  /* End of HV_MAX_EACH_ADC_CHANNEL */
 
-		#if BLE_TEST
+#if BLE_TEST
 		UTIL_SEQ_Run(~0);
-//		BLE_TestNotify();
-		#endif  /* End of BLE_TEST */
+		//		BLE_TestNotify();
+#endif  /* End of BLE_TEST */
 
-		#if PLOT_HV_ADC
+#if PLOT_HV_ADC
 		HV_Monitor();
-		#endif  /* End of PLOT_HV_ADC */
+#endif  /* End of PLOT_HV_ADC */
 
-		#if HV_MAX_OF_BOTH_ADCS
+#if HV_MAX_OF_BOTH_ADCS
 		ADC_ElecFenceTest();
 		printf("HV %d (mV)\n", g_max_hv);
-		#endif  /* End of HV_MAX_OF_BOTH_ADCS */
+#endif  /* End of HV_MAX_OF_BOTH_ADCS */
 
 	}
 	/* USER CODE END 3 */
@@ -2131,68 +2189,68 @@ int main(void)
   */
 void SystemClock_Config(void)
 {
-	RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-	RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-	RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
 
-	/** Configure LSE Drive Capability
-	 */
-	HAL_PWR_EnableBkUpAccess();
-	__HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
-	/** Configure the main internal regulator output voltage
-	 */
-	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
-	/** Initializes the RCC Oscillators according to the specified parameters
-	 * in the RCC_OscInitTypeDef structure.
-	 */
-	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE
-			|RCC_OSCILLATORTYPE_LSE;
-	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-	RCC_OscInitStruct.LSEState = RCC_LSE_ON;
-	RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-	RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
-	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-	{
-		Error_Handler();
-	}
-	/** Configure the SYSCLKSource, HCLK, PCLK1 and PCLK2 clocks dividers
-	 */
-	RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK4|RCC_CLOCKTYPE_HCLK2
-			|RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-			|RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSE;
-	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
-	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
-	RCC_ClkInitStruct.AHBCLK2Divider = RCC_SYSCLK_DIV1;
-	RCC_ClkInitStruct.AHBCLK4Divider = RCC_SYSCLK_DIV1;
+  /** Configure LSE Drive Capability
+  */
+  HAL_PWR_EnableBkUpAccess();
+  __HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
+  /** Configure the main internal regulator output voltage
+  */
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE
+                              |RCC_OSCILLATORTYPE_LSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.LSEState = RCC_LSE_ON;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure the SYSCLKSource, HCLK, PCLK1 and PCLK2 clocks dividers
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK4|RCC_CLOCKTYPE_HCLK2
+                              |RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSE;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.AHBCLK2Divider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.AHBCLK4Divider = RCC_SYSCLK_DIV1;
 
-	if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
-	{
-		Error_Handler();
-	}
-	/** Initializes the peripherals clocks
-	 */
-	PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SMPS|RCC_PERIPHCLK_RFWAKEUP
-			|RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART1
-			|RCC_PERIPHCLK_LPUART1|RCC_PERIPHCLK_I2C1
-			|RCC_PERIPHCLK_ADC;
-	PeriphClkInitStruct.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
-	PeriphClkInitStruct.Lpuart1ClockSelection = RCC_LPUART1CLKSOURCE_PCLK1;
-	PeriphClkInitStruct.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
-	PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_SYSCLK;
-	PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
-	PeriphClkInitStruct.RFWakeUpClockSelection = RCC_RFWKPCLKSOURCE_LSE;
-	PeriphClkInitStruct.SmpsClockSelection = RCC_SMPSCLKSOURCE_HSI;
-	PeriphClkInitStruct.SmpsDivSelection = RCC_SMPSCLKDIV_RANGE1;
-	if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
-	{
-		Error_Handler();
-	}
-	/* USER CODE BEGIN Smps */
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Initializes the peripherals clocks
+  */
+  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SMPS|RCC_PERIPHCLK_RFWAKEUP
+                              |RCC_PERIPHCLK_RTC|RCC_PERIPHCLK_USART1
+                              |RCC_PERIPHCLK_LPUART1|RCC_PERIPHCLK_I2C1
+                              |RCC_PERIPHCLK_ADC;
+  PeriphClkInitStruct.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
+  PeriphClkInitStruct.Lpuart1ClockSelection = RCC_LPUART1CLKSOURCE_PCLK1;
+  PeriphClkInitStruct.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
+  PeriphClkInitStruct.AdcClockSelection = RCC_ADCCLKSOURCE_SYSCLK;
+  PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
+  PeriphClkInitStruct.RFWakeUpClockSelection = RCC_RFWKPCLKSOURCE_LSE;
+  PeriphClkInitStruct.SmpsClockSelection = RCC_SMPSCLKSOURCE_HSI;
+  PeriphClkInitStruct.SmpsDivSelection = RCC_SMPSCLKDIV_RANGE1;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN Smps */
 
-	/* USER CODE END Smps */
+  /* USER CODE END Smps */
 }
 
 /* USER CODE BEGIN 4 */

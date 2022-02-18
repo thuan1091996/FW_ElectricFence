@@ -98,6 +98,9 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 
 #define LED_D2_Pin 	GPIO_PIN_7
 #define LED_D3_Pin 	GPIO_PIN_8
+
+#define SW1_GPIO_Port 	GPIOE
+#define SW1_Pin 		GPIO_PIN_4
 /* USER CODE BEGIN Private defines */
 #define USED								1
 #define NOT_USED							0
@@ -128,7 +131,7 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define GPS_TEST							USED
 #define ADC_TEST							USED
 
-#define LORA_TEST							USED
+#define LORA_TEST							NOT_USED
 #define TEST_SLEEPLORA						NOT_USED
 #if LORA_TEST
 #define LORAWAN_TEST						USED
@@ -136,7 +139,7 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define TEST_DOWNLINK						USED
 #endif  /* End of LORA_TEST */
 
-#define BLE_TEST							NOT_USED
+#define BLE_TEST							USED
 #define	DISABLE_ACL_IRQ						USED
 
 
@@ -147,7 +150,7 @@ void UART_GetDataDMA(uint8_t* pui8buffer);
 #define DEBUG_UART							NOT_USED
 #endif
 
-#define DEV_SLEEP							NOT_USED
+#define DEV_SLEEP							USED
 #define DEBUG_LPOWER						NOT_USED
 
 #define PROBE1								GPIO_PIN_11

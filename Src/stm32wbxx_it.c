@@ -184,11 +184,12 @@ void PendSV_Handler(void)
 }
 
 extern uint16_t g_countbuttonpress;
-extern bool g_buttonpressed;
+extern bool g_button1pressed;
+extern bool g_button2pressed;
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-	if(g_buttonpressed == true)
+	if( (g_button1pressed == true) || (g_button2pressed == true))
 	{
 		g_countbuttonpress++;
 	}
@@ -215,6 +216,17 @@ void EXTI0_IRQHandler(void)
 
   /* USER CODE END EXTI0_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
+  /* USER CODE BEGIN EXTI0_IRQn 1 */
+
+  /* USER CODE END EXTI0_IRQn 1 */
+}
+
+void EXTI4_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI0_IRQn 0 */
+
+  /* USER CODE END EXTI0_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4);
   /* USER CODE BEGIN EXTI0_IRQn 1 */
 
   /* USER CODE END EXTI0_IRQn 1 */
